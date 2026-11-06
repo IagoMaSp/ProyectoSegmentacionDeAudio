@@ -32,9 +32,29 @@ El sistema tambien reconoce los nombres de carpetas en espanol (`musica/`, `voz/
 
 ---
 
-## 3. Entrenar y evaluar los modelos (`src/train.py`)
+## 3. Caracteristicas precalculadas (`features/musan_features.npz`)
 
-Para entrenar utilizando todos los segmentos disponibles en `data/musan`:
+El repositorio incluye `features/musan_features.npz` (~24 MB) con los vectores de 18 caracteristicas ya extraidos de MUSAN (particiones train/test, etiquetas, nombres de caracteristicas y parametros usados). Gracias a esto **no hace falta descargar el dataset de audio** para entrenar: `src/train.py` usa el `.npz` automaticamente si existe.
+
+Para regenerarlo desde los `.wav` (requiere `data/musan/`, tarda unos 4 minutos):
+
+```bash
+.venv/bin/python -m src.build_features
+```
+
+Contenido del archivo:
+
+```python
+import numpy as np
+d = np.load("features/musan_features.npz")
+d["X_train"], d["X_test"], d["y_train"], d["y_test"], d["feature_names"], d["categories"]
+```
+
+---
+
+## 4. Entrenar y evaluar los modelos (`src/train.py`)
+
+Para entrenar (usa `features/musan_features.npz` si existe; si no, extrae desde `data/musan`):
 
 ```bash
 .venv/bin/python -m src.train
@@ -46,7 +66,9 @@ Para indicar una ruta personalizada al dataset o limitar la cantidad maxima de s
 .venv/bin/python -m src.train --data-dir /ruta/a/musan --max-segments 500
 ```
 
-Al ejecutar este comando, el pipeline realiza automaticamente las siguientes etapas:
+Para forzar la extraccion desde el audio ignorando el `.npz`, agrega `--from-audio`. (`--max-segments` solo aplica al extraer desde audio.)
+
+Al extraer desde audio, el pipeline realiza automaticamente las siguientes etapas:
 1. Separa los archivos `.wav` en conjuntos de entrenamiento ($80\%$) y prueba ($20\%$) a nivel de archivo para evitar data leakage.
 2. Genera la cuarta categoria (`silencio`) de forma independiente para cada particion combinando tramas de voz de baja energia y segmentos de ruido escalados entre `0.001` y `0.01`.
 3. Extrae los vectores de 18 caracteristicas temporales y espectrales por cada segmento de 3 segundos.
@@ -60,7 +82,7 @@ Al ejecutar este comando, el pipeline realiza automaticamente las siguientes eta
 
 ---
 
-## 4. Probar la segmentacion sobre un archivo `.wav` (`src/segmenter.py`)
+## 5. Probar la segmentacion sobre un archivo `.wav` (`src/segmenter.py`)
 
 Una vez entrenados y persistidos los modelos, se puede segmentar cualquier archivo `.wav` mono a $16000\text{ Hz}$ de duracion arbitraria desde la terminal:
 

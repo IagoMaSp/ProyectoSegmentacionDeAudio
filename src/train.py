@@ -12,6 +12,7 @@ from src.config import (
     BEST_MODEL_PATH,
     CATEGORIES,
     DATA_DIR,
+    FEATURES_PATH,
     KNN_MODEL_PATH,
     KNN_NEIGHBORS,
     MLP_HIDDEN_LAYERS,
@@ -21,7 +22,7 @@ from src.config import (
     RANDOM_STATE,
     SCALER_PATH,
 )
-from src.dataset import build_datasets
+from src.dataset import build_datasets, load_features_npz
 
 
 def fit_scaler(X_train: np.ndarray, X_test: np.ndarray) -> tuple[StandardScaler, np.ndarray, np.ndarray]:
@@ -99,11 +100,19 @@ def train_and_compare(
     data_dir: str | Path = DATA_DIR,
     max_segments_per_class: int | None = None,
     models_dir: str | Path = MODELS_DIR,
+    features_path: str | Path | None = FEATURES_PATH,
+    from_audio: bool = False,
 ) -> dict[str, Any]:
-    X_train, X_test, y_train, y_test = build_datasets(
-        data_dir=data_dir,
-        max_segments_per_class=max_segments_per_class,
-    )
+    if not from_audio and features_path is not None and Path(features_path).exists():
+        print(f"Cargando caracteristicas desde {features_path}")
+        X_train, X_test, y_train, y_test = load_features_npz(features_path)
+    else:
+        print(f"Extrayendo caracteristicas desde el audio en {data_dir}")
+        X_train, X_test, y_train, y_test = build_datasets(
+            data_dir=data_dir,
+            max_segments_per_class=max_segments_per_class,
+            verbose=True,
+        )
     scaler, X_train_scaled, X_test_scaled = fit_scaler(X_train, X_test)
 
     knn_model = train_knn(X_train_scaled, y_train)
@@ -153,8 +162,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Entrenamiento y comparacion de clasificadores de audio.")
     parser.add_argument("--data-dir", type=str, default=str(DATA_DIR))
     parser.add_argument("--max-segments", type=int, default=None)
+    parser.add_argument("--features", type=str, default=str(FEATURES_PATH),
+                        help="Archivo .npz con caracteristicas precalculadas (se usa si existe).")
+    parser.add_argument("--from-audio", action="store_true",
+                        help="Ignora el .npz y extrae las caracteristicas desde los .wav.")
     args = parser.parse_args()
-    train_and_compare(data_dir=args.data_dir, max_segments_per_class=args.max_segments)
+    train_and_compare(
+        data_dir=args.data_dir,
+        max_segments_per_class=args.max_segments,
+        features_path=args.features,
+        from_audio=args.from_audio,
+    )
 
 
 if __name__ == "__main__":

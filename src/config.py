@@ -3,6 +3,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data" / "musan"
 MODELS_DIR = BASE_DIR / "models"
+FEATURES_PATH = BASE_DIR / "features" / "musan_features.npz"
 
 SCALER_PATH = MODELS_DIR / "scaler.joblib"
 KNN_MODEL_PATH = MODELS_DIR / "knn_model.joblib"
