@@ -1,6 +1,5 @@
 ---
 title: "Guia de Uso del Sistema de Segmentacion y Clasificacion de Audio"
-date: "2026-11-06"
 ---
 
 # Guia de Uso
@@ -10,12 +9,12 @@ date: "2026-11-06"
 Desde la raiz del proyecto (`/home/iago/Facultad/Muestreo`), instala los paquetes requeridos dentro del entorno virtual `.venv`:
 
 ```bash
-.venv/bin/pip install numpy scipy scikit-learn joblib
+.venv/bin/pip install -r requirements.txt
 ```
 
 ---
 
-## 2. Ubicar el dataset MUSAN
+## 2. Ubicar el dataset MUSAN (Opcional)
 
 Por defecto, `src/config.py` busca el dataset en el directorio `data/musan/`, aunque tambien se puede especificar cualquier otra ruta por linea de comandos.
 
@@ -69,22 +68,23 @@ Para indicar una ruta personalizada al dataset o limitar la cantidad maxima de s
 Para forzar la extraccion desde el audio ignorando el `.npz`, agrega `--from-audio`. (`--max-segments` solo aplica al extraer desde audio.)
 
 Al extraer desde audio, el pipeline realiza automaticamente las siguientes etapas:
+
 1. Separa los archivos `.wav` en conjuntos de entrenamiento ($80\%$) y prueba ($20\%$) a nivel de archivo para evitar data leakage.
 2. Genera la cuarta categoria (`silencio`) de forma independiente para cada particion combinando tramas de voz de baja energia y segmentos de ruido escalados entre `0.001` y `0.01`.
 3. Extrae los vectores de 18 caracteristicas temporales y espectrales por cada segmento de 3 segundos.
 4. Ajusta el `StandardScaler` unicamente sobre la particion de entrenamiento y entrena los modelos `KNeighborsClassifier` y `MLPClassifier`.
 5. Muestra en consola el `Accuracy`, `F1 Macro` y el reporte de clasificacion detallado por categoria.
 6. Persiste los artefactos resultantes dentro del directorio `models/`:
-   - `models/scaler.joblib`
-   - `models/knn_model.joblib`
-   - `models/mlp_model.joblib`
-   - `models/best_model.joblib`
+    - `models/scaler.joblib`
+    - `models/knn_model.joblib`
+    - `models/mlp_model.joblib`
+    - `models/best_model.joblib`
 
 ---
 
 ## 5. Probar la segmentacion sobre un archivo `.wav` (`src/segmenter.py`)
 
-Una vez entrenados y persistidos los modelos, se puede segmentar cualquier archivo `.wav` mono a $16000\text{ Hz}$ de duracion arbitraria desde la terminal:
+Una vez entrenados y persistidos los modelos, se puede segmentar cualquier archivo `.wav` mono a $16\text{ kHz}$ de duracion arbitraria desde la terminal:
 
 ```bash
 .venv/bin/python -m src.segmenter /ruta/al/archivo_prueba.wav
@@ -112,3 +112,16 @@ Para utilizar un modelo especifico (`knn_model.joblib` o `mlp_model.joblib`) en 
 ```bash
 .venv/bin/python -m src.segmenter /ruta/al/archivo_prueba.wav --model-path models/knn_model.joblib
 ```
+
+---
+
+## 6. Frontend web (`src/server.py`)
+
+Requiere `ffmpeg` instalado en el sistema; con el se aceptan wav, mp3, ogg, flac, m4a, opus y cualquier frecuencia de muestreo (se convierte a 16 kHz mono antes de clasificar).
+
+```bash
+.venv/bin/python -m src.server            # http://127.0.0.1:8000
+.venv/bin/python -m src.server --port 9000
+```
+
+En la pagina se sube el archivo y se muestra una barra de colores y una tabla con los intervalos ("de 0 s a 9 s: musica"). Al hacer clic en una fila, el reproductor salta a ese instante. Los ultimos segundos que no completan un bloque de 3 s no se clasifican.
