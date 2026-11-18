@@ -101,7 +101,7 @@ def make_silence(kind: str, rng: np.random.Generator, level_range: tuple[float, 
     lo, hi = level_range
     level = rng.uniform(lo, hi)
     if kind == "sala" and noise_bank is not None and len(noise_bank):
-        base = noise_bank[rng.integers(len(noise_bank))].astype(np.float64)
+        base = np.resize(noise_bank[rng.integers(len(noise_bank))].astype(np.float64), n)
         # tono de sala: ruido real filtrado pasa-bajos (las paredes absorben agudos)
         b, a = sps.butter(2, rng.uniform(1500, 5000), fs=SAMPLE_RATE)
         x = sps.lfilter(b, a, base)

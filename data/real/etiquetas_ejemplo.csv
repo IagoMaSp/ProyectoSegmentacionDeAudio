@@ -1,0 +1,5 @@
+archivo,inicio,fin,clase
+mezcla_01.m4a,0,10,silencio
+mezcla_01.m4a,10,20,voz
+mezcla_01.m4a,20,30,musica
+mezcla_01.m4a,30,40,ruido
