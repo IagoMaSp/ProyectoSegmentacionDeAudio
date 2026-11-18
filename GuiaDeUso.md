@@ -41,7 +41,7 @@ Funciona sin conexion a internet. Pestanas:
 ```bash
 .venv/bin/python -m src.segmenter grabacion.m4a
 .venv/bin/python -m src.segmenter grabacion.wav --suavizado mediana --salto 1
-.venv/bin/python -m src.segmenter grabacion.wav --penalidad 10 --duracion-minima 3
+.venv/bin/python -m src.segmenter grabacion.wav --penalidad 6 --duracion-minima 3
 ```
 
 Salida real para una secuencia armada con audio del pliegue de prueba, convertida a m4a a 44.1 kHz (los tramos reales eran silencio 0–10.3 s, ruido 10.3–23.3 s, voz 23.3–29.4 s, ruido 29.4–37.1 s, silencio 37.1–41.8 s, ruido 41.8–46.2 s y musica 46.2–50.6 s):
@@ -50,16 +50,16 @@ Salida real para una secuencia armada con audio del pliegue de prueba, convertid
 Duracion: 50.59 s | suavizado: viterbi
 Inicio (s) | Fin (s)    | Categoria | Confianza
 --------------------------------------------------
-      0.00 |       9.00 | silencio  | 0.94
-      9.00 |      22.50 | ruido     | 0.85
+      0.00 |       9.00 | silencio  | 0.97
+      9.00 |      22.50 | ruido     | 0.84
      22.50 |      29.00 | voz       | 0.86
-     29.00 |      36.00 | ruido     | 0.92
-     36.00 |      41.00 | silencio  | 0.80
-     41.00 |      46.00 | ruido     | 0.86
+     29.00 |      36.00 | ruido     | 0.89
+     36.00 |      43.00 | silencio  | 0.87
+     43.00 |      46.00 | ruido     | 0.74
      46.00 |      50.59 | musica    | 0.93
 ```
 
-Los bordes quedan dentro de 1.3 s de los reales: es la resolucion que permite una ventana de 3 s.
+Los bordes quedan dentro de 1.3 s de los reales: es la resolucion que permite una ventana de 3 s. Ojo: las grabaciones de celular con control automatico de ganancia (por ejemplo notas de voz de mensajeria) suben el silencio de la pieza a unos −41 dBFS y el sistema lo marca como ruido; ver `explicacion.md`, seccion 9.4.
 
 ---
 

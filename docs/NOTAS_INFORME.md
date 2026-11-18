@@ -18,11 +18,11 @@ Material de base para armar el informe de 2–3 carillas. No es el informe: solo
 | Características | 64 por ventana | base 18 + espectrales 6 + MFCC 26 + deltas 13 + baja energía 1 | ver ablation | `features.py` |
 | Mel | banco a mano | 40 filtros, 20–8000 Hz, 13 MFCC, DCT-II ortonormal | escala perceptual, decorrelación | `features.mel_filterbank` |
 | Ventana de decisión | deslizante | 3 s cada 0,5 s, cola incluida | contexto estadístico + resolución de 0,5 s | `config.WINDOW_HOP` |
-| Suavizado | Viterbi | λ = 6 nats por cambio (ε ≈ 0,0074 por celda) | MAP de un HMM con segmentos que duran | `segmenter.viterbi` |
+| Suavizado | Viterbi | λ = 2 nats por cambio (antes 6; ver 3.2) | MAP de un HMM con segmentos que duran | `segmenter.viterbi` |
 | Duración mínima | absorción | 1,5 s | evita segmentos espurios | `segmenter.enforce_min_duration` |
 | En vivo | HMM hacia adelante | paso 1 s, T² | versión causal del Viterbi | `live.LiveSession` |
-| Silencio | definición por nivel | −85 a −52 dBFS, 8 tipos | el silencio real es ruido de fondo | `augment.make_silence` |
-| Clases activas | piso | ventanas < −50 dBFS descartadas | franja de 2 dB sin ejemplos entre clases | `config.ACTIVE_MIN_DBFS` |
+| Silencio | definición por nivel (medido tras el filtro) | −75 a −36 dBFS, 9 tipos (incluye `agc_celular`) | el silencio real es ruido de fondo; con AGC de celular medido en −40 a −42 dBFS | `augment.make_silence` |
+| Clases activas | piso | ruido < −34 dBFS y voz/música < −50 dBFS descartadas | franja de 2 dB entre ruido y silencio; voz y música se separan por espectro | `config.NOISE_MIN_DBFS`, `ACTIVE_MIN_DBFS` |
 | Augmentation | por pliegue | mezclas 0–20 dB, ruido con fondo 8–20 dB, reverb T60 0,15–0,7 s, canal de celular | robustez a lo que no se filtra | `dataset.synth_fold` |
 | Canal celular | pasa-banda + códec | 300–3400 Hz con AMR-NB o 100–7000 Hz con MP3/AAC/Opus | caminos reales de un celular | `augment.phone_channel` |
 | Validación | pliegues por archivo/fuente | 5 pliegues: 0–3 CV, 4 prueba | sin leakage, con varianza | `dataset.assign_folds` |
@@ -63,89 +63,102 @@ Observación: el ruido era la clase débil (5 477 ventanas de entrenamiento cont
 
 ### 3.2. Sistema nuevo
 
-Fuentes: `models/metricas.json` (CV y prueba), `docs/resultados/robustez.json` (robustez y segmentación).
+Fuentes: `models/metricas.json` (CV y prueba), `docs/resultados/robustez.json` (robustez y segmentación), `docs/resultados/eval_real.json` (grabaciones propias). Todo con la definición final de silencio (−75 a −36 dBFS medido tras el filtro, 9 tipos).
 
-**Dataset:** 60 000 ventanas de 3 s, 15 000 por clase (5 pliegues × 4 clases × 3000). Por pliegue y clase activa: 1800 limpias + 1200 sintéticas; silencio 3000 sintéticas. Extracción: 18 min con 7 procesos.
+**Dataset:** 60 000 ventanas de 3 s, 15 000 por clase (5 pliegues × 4 clases × 3000). Por pliegue y clase activa: 1800 limpias + 1200 sintéticas; silencio 3000 sintéticas. Extracción: 16 min con 7 procesos.
 
 **Validación cruzada (pliegues 0–3, 48 000 ventanas, 64 características):**
 
 | Modelo | F1 macro | Accuracy | Recall música | Recall voz | Recall ruido | Recall silencio |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| k-NN (k=15) | 0,8986 ± 0,0074 | 0,8995 | 0,869 | 0,968 | 0,800 | 0,960 |
-| Random Forest | 0,9299 ± 0,0102 | 0,9300 | 0,905 | 0,954 | 0,866 | 0,996 |
-| MLP (128-64) | 0,9429 ± 0,0075 | 0,9432 | 0,932 | 0,974 | 0,876 | 0,990 |
-| SVM RBF | 0,9457 ± 0,0077 | 0,9459 | 0,934 | 0,971 | 0,890 | 0,988 |
-| **Gradient Boosting** | **0,9486 ± 0,0063** | **0,9488** | 0,926 | 0,972 | 0,899 | 0,998 |
+| k-NN (k=15) | 0,8810 ± 0,0054 | 0,8831 | 0,864 | 0,970 | 0,741 | 0,958 |
+| Random Forest | 0,9189 ± 0,0117 | 0,9190 | 0,898 | 0,955 | 0,852 | 0,972 |
+| MLP (128-64) | 0,9338 ± 0,0072 | 0,9342 | 0,920 | 0,972 | 0,865 | 0,980 |
+| SVM RBF | 0,9376 ± 0,0124 | 0,9379 | 0,929 | 0,972 | 0,876 | 0,975 |
+| **Gradient Boosting** | **0,9440 ± 0,0108** | **0,9442** | 0,925 | 0,974 | 0,890 | 0,987 |
 
-**Prueba final (pliegue 4, 12 000 ventanas, Gradient Boosting):** accuracy 0,9550, F1 macro 0,9548. Recall: música 0,948, voz 0,976, ruido 0,897, silencio 0,999. F1: música 0,936, voz 0,972, ruido 0,919, silencio 0,992.
+**Prueba final (pliegue 4, 12 000 ventanas, Gradient Boosting):** accuracy 0,9428, F1 macro 0,9424. Recall: música 0,938, voz 0,974, ruido 0,871, silencio 0,988. F1: música 0,925, voz 0,971, ruido 0,899, silencio 0,975. Modelo: 2,0 MB.
 
 Matriz de confusión (filas = real, columnas = predicho; música, voz, ruido, silencio):
 
 ```text
-musica    2845    33   117     5
-voz         27  2927    45     1
-ruido      207    62  2691    40
-silencio     0     0     3  2997
+musica    2814    49   124    13
+voz         29  2923    43     5
+ruido      237    51  2613    99
+silencio     5     0    31  2964
 ```
 
-Accuracy por tipo de muestra en la prueba (peores): ruido con fondo de voz/música 0,743; celular banda angosta sin códec 0,909; Opus 16k 0,910; MP3 32k 0,911; mezcla con ruido 0,912; AMR-NB 0,917; limpias 0,964; silencios sintéticos ≥ 0,994.
+Accuracy por tipo de muestra en la prueba (peores): ruido con fondo de voz/música 0,767; celular banda ancha sin códec 0,881; banda angosta sin códec 0,896; mezcla con ruido 0,900; AMR-NB 0,907; AAC 32k 0,916; reverb y ganancia 0,917; MP3 32k 0,922.
 
 **Ablation (Gradient Boosting, CV):**
 
 | Grupos | Dimensión | F1 macro | Recall ruido |
 | :--- | :---: | :---: | :---: |
-| base | 18 | 0,8980 ± 0,0124 | 0,815 |
-| + espectrales | 24 | 0,9328 ± 0,0089 | 0,882 |
-| + MFCC | 50 | 0,9435 ± 0,0082 | 0,893 |
-| + deltas | 63 | 0,9478 ± 0,0077 | 0,899 |
-| + baja energía | 64 | 0,9486 ± 0,0063 | 0,899 |
-| solo MFCC + deltas | 39 | 0,9228 ± 0,0067 | 0,842 |
+| base | 18 | 0,8805 ± 0,0127 | 0,778 |
+| + espectrales | 24 | 0,9242 ± 0,0118 | 0,865 |
+| + MFCC | 50 | 0,9375 ± 0,0110 | 0,882 |
+| + deltas | 63 | 0,9399 ± 0,0112 | 0,884 |
+| + baja energía | 64 | 0,9440 ± 0,0108 | 0,890 |
+| solo MFCC + deltas | 39 | 0,9118 ± 0,0090 | 0,820 |
 
-**Robustez (pliegue de prueba, 300 recortes por clase; nuevo / anterior):**
+**Robustez (pliegue de prueba, 300 recortes por clase, mismos recortes para los dos sistemas; nuevo / anterior):**
 
 | Condición | Nuevo | Anterior |
 | :--- | :---: | :---: |
-| voz y música limpias | 0,957 | 0,942 |
-| SNR 20 dB | 0,953 | 0,888 |
-| SNR 10 dB | 0,910 | 0,717 |
-| SNR 5 dB | 0,842 | 0,608 |
-| SNR 0 dB | 0,640 | 0,532 |
-| SNR −5 dB | 0,450 | 0,437 |
-| fs 16 kHz (4 clases) | 0,964 | 0,909 |
-| 44,1 → 16 kHz | 0,964 | 0,894 |
-| 11 025 Hz | 0,946 | 0,784 |
-| 8000 Hz | 0,918 | 0,670 |
-| 6000 Hz | 0,892 | 0,676 |
-| 8000 Hz sin anti-alias | 0,918 | 0,695 |
-| MP3 128k | 0,964 | 0,889 |
-| MP3 32k | 0,961 | 0,893 |
-| AAC 32k | 0,958 | 0,912 |
-| Opus 16k | 0,963 | 0,911 |
-| AMR-NB 12,2k | 0,907 | 0,682 |
-| canal de celular completo | 0,943 | 0,736 |
+| voz y música limpias | 0,965 | 0,950 |
+| SNR 20 dB | 0,955 | 0,893 |
+| SNR 10 dB | 0,928 | 0,732 |
+| SNR 5 dB | 0,823 | 0,605 |
+| SNR 0 dB | 0,667 | 0,538 |
+| SNR −5 dB | 0,462 | 0,452 |
+| fs 16 kHz (4 clases) | 0,961 | 0,873 |
+| 44,1 → 16 kHz | 0,960 | 0,871 |
+| 11 025 Hz | 0,934 | 0,766 |
+| 8000 Hz | 0,905 | 0,654 |
+| 6000 Hz | 0,871 | 0,644 |
+| 8000 Hz sin anti-alias | 0,891 | 0,673 |
+| MP3 128k | 0,962 | 0,868 |
+| MP3 32k | 0,959 | 0,867 |
+| AAC 32k | 0,954 | 0,874 |
+| Opus 16k | 0,948 | 0,873 |
+| AMR-NB 12,2k | 0,871 | 0,663 |
+| canal de celular completo | 0,939 | 0,742 |
 
-Con AMR-NB, recall de ruido: nuevo 0,847, anterior 0,213. A 0 dB, recall de voz: nuevo 0,527, anterior 0,293.
+Con AMR-NB, recall de ruido: nuevo 0,847, anterior 0,237. A 0 dB, recall de voz: nuevo 0,533, anterior 0,250.
 
-Observación para el informe: con y sin anti-alias a 8 kHz la accuracy es la misma (0,918). El anti-alias no mejora la clasificación medida en MUSAN; se justifica por fidelidad de la señal (demo: alias de −3 dB contra −100 dB).
+Anti-alias: a 8 kHz, 0,905 con filtro contra 0,891 sin filtro (+1,4 puntos, del orden del error de medición ≈ 0,009 con 1200 recortes). Se justifica sobre todo por fidelidad de la señal (demo: alias de −3 dB contra −100 dB).
 
-**Segmentación (30 secuencias continuas del pliegue de prueba, 6–10 tramos de 3–15 s, 238 tramos):**
+**Segmentación (30 secuencias continuas del pliegue de prueba, 6–10 tramos de 3–15 s, 244 tramos):**
 
 | Variante | Acierto por celda | Segmentos | Borde mediano | Borde medio |
 | :--- | :---: | :---: | :---: | :---: |
-| sin suavizado | 0,869 | 314 | 0,67 s | 0,79 s |
-| mediana | 0,870 | 299 | 0,76 s | 0,83 s |
-| Viterbi λ=2 | 0,885 | 258 | 0,77 s | 1,03 s |
-| Viterbi λ=4 | 0,894 | 235 | 0,83 s | 1,18 s |
-| Viterbi λ=6 (por defecto) | 0,899 | 225 | 0,83 s | 1,27 s |
-| Viterbi λ=10 | 0,897 | 216 | 0,87 s | 1,60 s |
+| sin suavizado | 0,870 | 282 | 0,86 s | 0,98 s |
+| mediana | 0,874 | 265 | 0,89 s | 0,99 s |
+| Viterbi λ=2 (por defecto) | 0,876 | 240 | 0,91 s | 1,20 s |
+| Viterbi λ=4 | 0,873 | 218 | 0,95 s | 1,64 s |
+| Viterbi λ=6 | 0,872 | 212 | 0,96 s | 1,73 s |
+| Viterbi λ=10 | 0,867 | 206 | 0,98 s | 1,91 s |
 
-**Latencia del modo en vivo** (medida en el servidor con el modelo definitivo, mediana de 60 bloques, 48 y 44,1 kHz): procesamiento por bloque de 250 ms ≈ 2,5 ms sin decisión y ≈ 14,7 ms con decisión; FIR anti-alias 3,2 ms; espera del remuestreador 3,2 ms. Reacción de la etiqueta a un cambio de clase: estimada en 2–3,5 s (paso de 1 s + ventana de 3 s + confirmación del HMM).
+λ = 2 se eligió mirando esta tabla (pliegue de prueba): su fila es algo optimista. Con la definición de silencio anterior el óptimo había sido λ = 6 (0,899, 225/238 segmentos).
+
+**Latencia del modo en vivo** (servidor, modelo final, mediana de 60 bloques, 48 y 44,1 kHz): procesamiento por bloque de 250 ms ≈ 2,3 ms sin decisión y ≈ 14 ms con decisión; FIR anti-alias 3,2 ms; espera del remuestreador 3,2 ms. Reacción de la etiqueta a un cambio de clase: estimada en 2–3,5 s (paso de 1 s + ventana de 3 s + confirmación del HMM).
 
 **Advertencias para no sobrevender:**
-- El silencio sintético sale casi perfecto (≥ 0,994) porque está definido por nivel; la prueba real para esa clase son las grabaciones de `data/real/`.
-- La comparación de prueba con la versión anterior no es directa (otra partición y otro conjunto, más difícil); la comparación justa son las curvas de robustez, que usan los mismos recortes para los dos sistemas.
-- GB y SVM son equivalentes dentro de un desvío.
+- El silencio sintético sale muy bien (0,988), pero el silencio real grabado con celular falla (ver 3.3).
+- La comparación de prueba con la versión anterior no es directa (otra partición, conjunto más difícil); la comparación justa son las curvas de robustez y las grabaciones reales, que usan el mismo audio para los dos sistemas.
+- GB y SVM están a 0,006 de F1, del orden de un desvío.
 
 ### 3.3. Grabaciones reales
 
-Pendiente: grabar según `data/real/LEEME.md` y correr `python -m scripts.eval_real`. Los resultados quedan en `docs/resultados/eval_real.json`.
+Cuatro notas de voz de celular (Opus, 48 kHz, 20–25 s), por celdas de 0,5 s:
+
+| Archivo | Predicción | Acierto |
+| :--- | :--- | :---: |
+| voz_01 | voz todo | 1,000 |
+| ruido_01 | ruido todo | 1,000 |
+| musica_01 | voz 0–8 s, música 8–20 s | 0,610 |
+| silencio_01 | ruido todo | 0,000 |
+
+Total 0,678 (sin suavizado 0,655; versión anterior 0,379). F1 macro 0,576.
+
+Silencio: con el AGC del celular queda en −40 a −42 dBFS y con variación espectral en el tiempo (desvío de mfcc_1 de 2,9 contra 0,95 en el silencio sintético); es indistinguible de ruido ambiente bajo. Se probó subir el techo de nivel (−52 → −38), fijar el nivel tras el filtro, un silencio tipo AGC y otro armado con ambientes reales de MUSAN: la confianza en ruido bajó de 0,999 a 0,57 en el último experimento, sin cambiar la decisión. Las grabaciones se usaron para diagnosticar, así que ya no son una prueba independiente.

@@ -24,7 +24,7 @@ Todas las senales son de audio: unidimensionales, reales, de banda base, y en el
 | Voz | Modulacion silabica de amplitud a 3–6 Hz; alternancia de tramos sonoros (casi periodicos, $F_0 \approx 85$–$255\text{ Hz}$) y sordos (fricativas, parecidas a ruido); pausas cortas. | Armonicos de $F_0$ con envolvente de formantes ($F_1$ 300–900 Hz, $F_2$ 900–2500 Hz); energia util hasta 4 kHz y fricativas hasta 8 kHz. Cambia rapido de frame a frame. |
 | Musica | Energia mas sostenida, ritmo (periodicidad de 1–3 Hz), pocas pausas. | Lineas armonicas estables durante decenas de ms, banda ancha (bajo + percusion + agudos); espectro con estructura pero que cambia mas lento que la voz. |
 | Ruido | Estacionario (ventilador, lluvia) o impulsivo (golpes, transito). Nivel alto. | Sin estructura armonica, espectro "plano" o de pendiente suave; alta planitud espectral. |
-| Silencio | Nivel muy bajo (por debajo de unos $-50\text{ dBFS}$); en la practica es ruido de fondo de la sala, del preamplificador o ceros digitales con dither. | El espectro del ruido de fondo: rosa o marron en una sala, blanco con enfasis en agudos para el siseo del microfono. |
+| Silencio | Nivel bajo y sin eventos (por debajo de unos $-36\text{ dBFS}$); en la practica es ruido de fondo de la sala, del preamplificador o ceros digitales con dither. | El espectro del ruido de fondo: rosa o marron en una sala, blanco con enfasis en agudos para el siseo del microfono. |
 
 La clase silencio no se distingue del ruido por la forma del espectro sino por el **nivel**: esa es una decision de diseno explicita (seccion 6.3).
 
@@ -333,7 +333,14 @@ Si se cortan los archivos en ventanas y despues se reparten al azar, ventanas co
 
 ### 6.3. Clase silencio
 
-En una grabacion real el silencio absoluto no existe; hay ruido de fondo de muy bajo nivel. Se define silencio como **senal sin eventos con nivel RMS entre −85 y −52 dBFS** (`SILENCE_DBFS_RANGE`), y se generan 8 tipos por igual (`make_silence`):
+En una grabacion real el silencio absoluto no existe; hay ruido de fondo de muy bajo nivel. Se define silencio como **senal sin eventos con nivel RMS entre −75 y −36 dBFS medido sobre la senal acondicionada** (`SILENCE_DBFS_RANGE`), y se generan 9 tipos por igual (`make_silence`).
+
+**Como se llego a esta definicion (y por que importa medir despues del filtro).** La primera version fijaba el nivel del silencio sintetico entre −85 y −52 dBFS *antes* del acondicionamiento. Las grabaciones de celular de `data/real/` (notas de voz Opus a 48 kHz) mostraron dos problemas:
+
+1. El silencio de una pieza grabado con el celular queda en **−40 a −42 dBFS** ya acondicionado: el control automatico de ganancia (AGC) sube el ruido de fondo cuando no hay senal. Esa grabacion se clasificaba 100 % como ruido; atenuada 15 dB pasaba a silencio (0.93).
+2. Subir solo el techo nominal no alcanzo: como el nivel se fijaba antes del filtro, el ruido marron y el rosa (con mucha energia debajo de 70 Hz) quedaban, despues del pasa-altos, muy por debajo de lo nominal; el 90 % del silencio de entrenamiento terminaba por debajo de unos −49 dBFS efectivos. Ademas el silencio con AGC tiene una forma que ningun tipo sintetico cubria: 81 % de la energia por debajo de 500 Hz, planitud muy baja (0.005) y flujo espectral alto (0.09) porque el AGC "bombea" el nivel.
+
+La correccion fue fijar el nivel sobre la senal ya acondicionada (la que ve el modelo, coherente con como se midio la grabacion) y agregar el tipo `agc_celular`. Como ese tipo se diseno despues de ver la grabacion, **esa grabacion de silencio ya no es una prueba independiente**; una validacion limpia requiere otro silencio grabado en otro lugar.
 
 | Tipo | Como se genera | Que representa |
 | :--- | :--- | :--- |
@@ -344,11 +351,15 @@ En una grabacion real el silencio absoluto no existe; hay ruido de fondo de muy 
 | `dither` | ceros digitales + dither TPDF de ±1 LSB, cuantizado a 16 bits | silencio digital de una app o un archivo |
 | `pausas_voz` | frames del 10 % de menor energia de los archivos de voz | pausas reales entre frases |
 | `zumbido` | 50 Hz + armonicos 2, 3, 5 con desvio de ±0.3 Hz, mas ruido rosa | silencio con equipos enchufados |
-| `muy_bajo` | ruido de color aleatorio a −95/−80 dBFS | celular en una pieza muy silenciosa |
+| `muy_bajo` | ruido de color aleatorio a −85/−70 dBFS | placa de sonido en una pieza muy silenciosa |
+| `agc_celular` | ruido de pendiente $1/f^{1.5\text{–}2.5}$, pasa-bajos de 0.4–1.5 kHz y modulacion lenta de nivel (0.3–2 Hz, 2–8 dB) | pieza en silencio grabada con un celular con AGC |
 
 Los ruidos de color se generan en frecuencia (espectro blanco complejo multiplicado por $f^{-\alpha/2}$, con la pendiente saturada por debajo de 20 Hz) y todos se cuantizan a 16 bits como lo haria el conversor. Una sexta parte del silencio pasa ademas por el canal de celular.
 
-La frontera de nivel tiene una consecuencia: en las clases activas se descartan las ventanas por debajo de −50 dBFS (`ACTIVE_MIN_DBFS`; colas de pistas, pausas largas), que en realidad son silencio y contradirian la definicion. Entre −52 y −50 dBFS queda una franja sin ejemplos de entrenamiento para que las dos definiciones no se pisen.
+La frontera de nivel tiene consecuencias en las clases activas:
+
+- En **ruido** se descartan las ventanas de MUSAN por debajo de −34 dBFS (`NOISE_MIN_DBFS`): son ambientes casi vacios que, con esta definicion, son ruido de fondo, es decir silencio. Entre −36 y −34 dBFS queda una franja de 2 dB sin ejemplos para que las dos definiciones no se pisen.
+- En **voz y musica** el piso queda en −50 dBFS (`ACTIVE_MIN_DBFS`; se descartan colas de pistas y pausas largas). Aunque su rango de nivel se superpone con el del silencio, las separa la forma del espectro (armonicos, modulacion, variabilidad), no el nivel.
 
 ### 6.4. Augmentation
 
@@ -448,7 +459,7 @@ $$\lambda = \ln\frac{(1 - \varepsilon)(K - 1)}{\varepsilon} \quad \Longleftright
 
 El maximo se calcula exactamente con **programacion dinamica** (algoritmo de Viterbi) en $O(T K^2)$: para cada celda y estado se guarda el mejor puntaje acumulado y de que estado se vino, y al final se recorre el camino hacia atras.
 
-**Interpretacion de $\lambda = 6$ nats** (`TRANSITION_PENALTY`, $\varepsilon \approx 0.0074$ por celda): un cambio de clase se acepta solo si la nueva clase es, acumulado sobre las celdas del tramo, $e^6 \approx 400$ veces mas probable que seguir en la anterior. Un pico de una sola celda con $q = 0.7$ contra $0.1$ aporta $\ln 7 \approx 1.95$ y no alcanza; tres celdas seguidas si. $\lambda = 0$ reproduce el argmax celda a celda (`test_viterbi_sin_penalidad_es_argmax`). La comparacion de variantes en secuencias sinteticas esta en `docs/resultados/robustez.json` (clave `segmentacion`).
+**Interpretacion de $\lambda = 2$ nats** (`TRANSITION_PENALTY`): un cambio de clase se acepta si la nueva clase es, acumulado sobre el tramo, al menos $e^2 \approx 7.4$ veces mas probable que seguir en la anterior. Un pico aislado tiene que pagar dos cambios (entrar y salir, $2\lambda = 4$ nats): una celda con $q = 0.7$ contra $0.1$ aporta $\ln 7 \approx 1.95$ y dos celdas $3.9$, que no alcanzan; tres celdas seguidas si. La duracion minima de 1.5 s (3 celdas) completa el criterio. $\lambda = 0$ reproduce el argmax celda a celda (`test_viterbi_sin_penalidad_es_argmax`). La primera version usaba $\lambda = 6$; con la definicion final de silencio (seccion 6.3) esa penalidad absorbia demasiados tramos reales y se bajo a 2 (seccion 9.3).
 
 ### 8.5. Duracion minima y fusion
 
@@ -482,53 +493,68 @@ Sobre 300 recortes por clase del pliegue de prueba, comparando el sistema nuevo 
 
 ### 9.3. Resultados medidos
 
-Todos los valores salen de `models/metricas.json` y `docs/resultados/robustez.json`.
+Todos los valores salen de `models/metricas.json`, `docs/resultados/robustez.json` y `docs/resultados/eval_real.json`, con la definicion final de silencio (seccion 6.3).
 
 **Validacion cruzada (pliegues 0–3, 48 000 ventanas) y prueba (pliegue 4, 12 000 ventanas):**
 
 | Modelo | F1 macro CV | Recall ruido CV |
 | :--- | :---: | :---: |
-| k-NN | 0.899 ± 0.007 | 0.800 |
-| Random Forest | 0.930 ± 0.010 | 0.866 |
-| MLP | 0.943 ± 0.008 | 0.876 |
-| SVM | 0.946 ± 0.008 | 0.890 |
-| **Gradient Boosting** (elegido) | **0.949 ± 0.006** | **0.899** |
+| k-NN | 0.881 ± 0.005 | 0.741 |
+| Random Forest | 0.919 ± 0.012 | 0.852 |
+| MLP | 0.934 ± 0.007 | 0.865 |
+| SVM | 0.938 ± 0.012 | 0.876 |
+| **Gradient Boosting** (elegido) | **0.944 ± 0.011** | **0.890** |
 
-En el pliegue de prueba, el Gradient Boosting da accuracy 0.955, F1 macro 0.955 y recall 0.948 (musica), 0.976 (voz), 0.897 (ruido) y 0.999 (silencio). La confusion dominante es ruido → musica (207 de 3000). El tipo de muestra mas dificil es ruido con voz o musica de fondo (0.743). La diferencia con el SVM (0.003) esta dentro de un desvio: ambos son opciones validas, y el criterio fijado de antemano elige Gradient Boosting.
+En el pliegue de prueba, Gradient Boosting da accuracy 0.943 y F1 macro 0.942, con recall de 0.938 (musica), 0.974 (voz), 0.871 (ruido) y 0.988 (silencio). La confusion dominante es ruido → musica (237 de 3000), seguida de ruido → silencio (99), que es la frontera de nivel de la seccion 6.3. El tipo de muestra mas dificil es ruido con voz o musica de fondo (0.767). GB supera al SVM por 0.006, del orden de un desvio.
 
-**Ablation (Gradient Boosting, CV):** base (18) 0.898 → +espectrales (24) 0.933 → +MFCC (50) 0.944 → +deltas (63) 0.948 → +baja energia (64) 0.949. Solo MFCC + deltas (39) da 0.923: las caracteristicas de la consigna siguen aportando informacion que los MFCC no tienen. El salto mas grande lo dan planitud, rolloff y flujo (+0.035), y es la mayor mejora en el recall de ruido (0.815 → 0.882).
+**Ablation (Gradient Boosting, CV):** base (18) 0.881 → +espectrales (24) 0.924 → +MFCC (50) 0.938 → +deltas (63) 0.940 → +baja energia (64) 0.944. Solo MFCC + deltas (39) da 0.912: las caracteristicas de la consigna aportan informacion que los MFCC no tienen. El salto mas grande lo dan planitud, rolloff y flujo (+0.044), que es tambien la mayor mejora del recall de ruido (0.778 → 0.865).
 
-**Robustez, nuevo contra anterior** (accuracy; SNR sobre voz y musica, el resto sobre las 4 clases):
+**Robustez, nuevo contra anterior** (accuracy; SNR sobre voz y musica, el resto sobre las 4 clases, mismos recortes para los dos sistemas):
 
 | Condicion | Nuevo | Anterior |
 | :--- | :---: | :---: |
-| SNR 20 / 10 / 5 / 0 dB | 0.953 / 0.910 / 0.842 / 0.640 | 0.888 / 0.717 / 0.608 / 0.532 |
-| fs 16 kHz / 11.025 / 8 / 6 kHz | 0.964 / 0.946 / 0.918 / 0.892 | 0.909 / 0.784 / 0.670 / 0.676 |
-| 8 kHz sin anti-alias | 0.918 | 0.695 |
-| MP3 32 kbit/s / AAC 32 / Opus 16 | 0.961 / 0.958 / 0.963 | 0.893 / 0.912 / 0.911 |
-| AMR-NB | 0.907 | 0.682 |
-| Canal de celular completo | 0.943 | 0.736 |
+| SNR 20 / 10 / 5 / 0 dB | 0.955 / 0.928 / 0.823 / 0.667 | 0.893 / 0.732 / 0.605 / 0.538 |
+| fs 16 kHz / 11.025 / 8 / 6 kHz | 0.961 / 0.934 / 0.905 / 0.871 | 0.873 / 0.766 / 0.654 / 0.644 |
+| 8 kHz sin anti-alias | 0.891 | 0.673 |
+| MP3 32 kbit/s / AAC 32 / Opus 16 | 0.959 / 0.954 / 0.948 | 0.867 / 0.874 / 0.873 |
+| AMR-NB | 0.871 | 0.663 |
+| Canal de celular completo | 0.939 | 0.742 |
 
-La mejora mas grande esta donde la version anterior no tenia datos de entrenamiento: banda angosta y AMR-NB (con AMR-NB el recall de ruido del sistema anterior cae a 0.21; el nuevo queda en 0.85).
+La mejora mas grande esta donde la version anterior no tenia datos de entrenamiento: banda angosta y AMR-NB (con AMR-NB el recall de ruido del sistema anterior cae a 0.24; el nuevo queda en 0.85).
 
-**Sobre el anti-alias, honestamente:** a 8 kHz la accuracy es la misma con y sin anti-alias (0.918). En MUSAN hay poca energia entre 4 y 8 kHz y lo que se pliega es debil frente al contenido de la banda util, asi que el clasificador no lo nota. El anti-alias se justifica por fidelidad de la senal (el alias de un tono pasa de −3 dB a −100 dB, seccion 2.2) y porque no cuesta nada, no por una ganancia de accuracy medida en este conjunto.
+**Sobre el anti-alias, honestamente:** a 8 kHz la diferencia con y sin anti-alias es de 1.4 puntos (0.905 contra 0.891), del orden del error de medicion con 1200 recortes (≈ 0.009). En MUSAN hay poca energia entre 4 y 8 kHz y lo que se pliega es debil. El anti-alias se justifica por fidelidad de la senal (el alias de un tono pasa de −3 dB a −100 dB, seccion 2.2) y porque no cuesta nada, mas que por la ganancia de accuracy medida en este conjunto.
 
-**Segmentacion** (30 secuencias continuas, 238 tramos reales):
+**Segmentacion** (30 secuencias continuas del pliegue de prueba, 244 tramos reales):
 
 | Variante | Acierto por celda | Segmentos predichos | Error de borde mediano / medio |
 | :--- | :---: | :---: | :---: |
-| Sin suavizado | 0.869 | 314 | 0.67 s / 0.79 s |
-| Mediana | 0.870 | 299 | 0.76 s / 0.83 s |
-| Viterbi λ = 2 | 0.885 | 258 | 0.77 s / 1.03 s |
-| Viterbi λ = 4 | 0.894 | 235 | 0.83 s / 1.18 s |
-| **Viterbi λ = 6** | **0.899** | 225 | 0.83 s / 1.27 s |
-| Viterbi λ = 10 | 0.897 | 216 | 0.87 s / 1.60 s |
+| Sin suavizado | 0.870 | 282 | 0.86 s / 0.98 s |
+| Mediana | 0.874 | 265 | 0.89 s / 0.99 s |
+| **Viterbi λ = 2** (por defecto) | **0.876** | 240 | 0.91 s / 1.20 s |
+| Viterbi λ = 4 | 0.873 | 218 | 0.95 s / 1.64 s |
+| Viterbi λ = 6 | 0.872 | 212 | 0.96 s / 1.73 s |
+| Viterbi λ = 10 | 0.867 | 206 | 0.98 s / 1.91 s |
 
-Viterbi elimina los segmentos espurios (314 → 225 con 238 reales) y maximiza el acierto por celda en λ = 6. El costo es el error medio de borde: cuando un tramo real corto se absorbe, el error de ese borde es grande. λ = 4 da la cantidad de segmentos mas cercana a la real; λ = 6 el mejor acierto. Estas secuencias usan el pliegue de prueba, asi que se usaron para describir la sensibilidad a λ, no para ajustarlo (λ = 6 estaba fijado antes de medir).
+Con λ = 2 el numero de segmentos queda casi igual al real (240 contra 244) y el acierto por celda es el mejor. Penalidades mas altas absorben tramos reales cortos: menos segmentos que los reales y error medio de borde mayor. En la primera version del silencio (techo de −52 dBFS) el optimo habia sido λ = 6 (0.899); con el silencio redefinido hay mas celdas ambiguas entre ruido y silencio y una penalidad alta las arrastra. **Advertencia:** λ = 2 se eligio mirando estas secuencias, que salen del pliegue de prueba, asi que su fila es algo optimista; las demas filas describen la sensibilidad.
 
 ### 9.4. Grabaciones reales (`scripts/eval_real.py`)
 
 MUSAN no tiene grabaciones de celular. `data/real/` recibe grabaciones propias (instrucciones en `data/real/LEEME.md`); las etiquetas salen del nombre del archivo o de un CSV con intervalos. Se compara el sistema completo, el mismo sin suavizado y la version anterior, por celdas de 0.5 s.
+
+Con cuatro notas de voz de celular (Opus, 48 kHz, 20–25 s cada una):
+
+| Archivo | Resultado | Acierto por celda |
+| :--- | :--- | :---: |
+| `voz_01` | voz todo el archivo | 1.00 |
+| `ruido_01` | ruido todo el archivo | 1.00 |
+| `musica_01` | voz 0–8 s, musica 8–20 s | 0.61 |
+| `silencio_01` | ruido todo el archivo | 0.00 |
+
+Total: 0.678 por celda (0.655 sin suavizado; version anterior 0.379).
+
+El **silencio** de un celular con control automatico de ganancia queda en −41 dBFS y con una forma espectral que varia en el tiempo (el desvio del primer MFCC es el triple que en los silencios sinteticos). Con eso es indistinguible de un ruido ambiente bajo: el AGC le quita significado al nivel absoluto, que es justamente lo que separa silencio de ruido. Se probaron tres correcciones (subir el techo de nivel, fijarlo despues del filtro, agregar un silencio tipo AGC y uno armado con ambientes reales de MUSAN): la confianza en "ruido" bajo de 0.999 a 0.57, pero no cambio la decision, y seguir habria sido ajustar el modelo a un solo archivo. Queda como limitacion documentada. Soluciones posibles: grabar con una app sin AGC, o detectar silencio en forma relativa (tramos mucho mas bajos que el resto de la misma grabacion), lo que requiere una referencia dentro del archivo.
+
+La **musica** sale como voz en los primeros 8 s. Es consistente con la confusion mas dificil del sistema: musica con voz cantada y poco acompanamiento. Con una sola grabacion no se puede distinguir entre esa explicacion y un error del modelo.
 
 ---
 
@@ -552,7 +578,7 @@ Servidor HTTP de la biblioteca estandar, sin dependencias externas ni recursos d
 | Remuestreo | ffmpeg, filtro implicito | `resample_poly` con FIR Kaiser de 80 dB | anti-alias controlado y documentado |
 | Frames | 512/256, Hann simetrica | 480/160, Hann periodica, FFT 512 | COLA exacta; rejilla compatible con la ventana deslizante |
 | Caracteristicas | 18 | 64 (MFCC, deltas, rolloff, planitud, flujo, baja energia) | ver ablation |
-| Silencio | pausas de voz y ruido atenuado | 8 tipos con nivel definido | el silencio real de un celular es ruido de sala, siseo o ceros con dither |
+| Silencio | pausas de voz y ruido atenuado | 9 tipos con nivel definido tras el filtro, incluido el de un celular con AGC | el silencio real de un celular es ruido de sala, siseo, ceros con dither o ruido subido por el AGC |
 | Augmentation | ninguna | mezclas a SNR, reverb, canal de celular con codecs reales | robustez frente a lo que no se puede filtrar |
 | Validacion | una particion 80/20 por archivo | 5 pliegues por archivo y fuente, CV + prueba | estimacion con varianza y sin fuga |
 | Modelos | k-NN y MLP | k-NN, MLP, SVM, RF, GB | comparacion mas completa |
@@ -566,7 +592,7 @@ Servidor HTTP de la biblioteca estandar, sin dependencias externas ni recursos d
 Con 16 kHz la Nyquist es 8 kHz: entran los formantes de la voz, las fricativas y casi todo lo que distingue musica de ruido. 44.1 kHz cuesta 2.75 veces mas y no aporta para estas cuatro clases. MUSAN ademas esta a 16 kHz.
 
 **¿Que pasa si se submuestrea sin filtro?**
-Lo que esta por encima de la nueva Nyquist se pliega a $|f - k f_s|$ y aparece como una componente que no existia. No se puede deshacer despues. La pestana Aliasing lo muestra: 5 kHz a $f_s = 8\text{ kHz}$ aparece en 3 kHz casi con el mismo nivel; con el FIR anti-alias queda en −100 dB. En la clasificacion de MUSAN a 8 kHz no se midio diferencia (0.918 con y sin filtro), porque hay poca energia entre 4 y 8 kHz; el filtro se justifica por fidelidad, no por accuracy.
+Lo que esta por encima de la nueva Nyquist se pliega a $|f - k f_s|$ y aparece como una componente que no existia. No se puede deshacer despues. La pestana Aliasing lo muestra: 5 kHz a $f_s = 8\text{ kHz}$ aparece en 3 kHz casi con el mismo nivel; con el FIR anti-alias queda en −100 dB. En la clasificacion de MUSAN a 8 kHz la diferencia fue chica (0.905 con filtro, 0.891 sin), del orden del error de medicion, porque hay poca energia entre 4 y 8 kHz; el filtro se justifica sobre todo por fidelidad.
 
 **¿Como disenaron el anti-alias?**
 FIR de fase lineal con ventana de Kaiser: rechazo de 80 dB desde la nueva Nyquist (8 kHz) y transicion de 7.2 a 8 kHz. Kaiser da el orden minimo para esa atenuacion y transicion: 303 coeficientes de 48 a 16 kHz. Se le pasa a `resample_poly`, que lo aplica en forma polifasica.
@@ -617,7 +643,7 @@ Un frame no alcanza para decidir. La voz se reconoce por la variacion: alterna s
 3 s dan contexto suficiente para estadisticas estables; el salto de 0.5 s da resolucion temporal de 0.5 s sin achicar la ventana. El precio es que un borde se ubica con una incertidumbre del orden de la mitad de la ventana.
 
 **¿Que hace el Viterbi y como se elige la penalidad?**
-Busca la secuencia de clases que maximiza la suma de log-probabilidades menos λ por cada cambio; es un HMM con probabilidad de cambio ε = (K−1)/(e^λ + K−1). Con λ = 6 un pico de una celda no alcanza para cambiar de clase, pero tres celdas seguidas si. En 30 secuencias de prueba, λ = 6 dio el mejor acierto por celda (0.899 contra 0.869 sin suavizado) y bajo los segmentos de 314 a 225 con 238 reales.
+Busca la secuencia de clases que maximiza la suma de log-probabilidades menos λ por cada cambio; es un HMM con probabilidad de cambio ε = (K−1)/(e^λ + K−1). Con λ = 2 un pico de una o dos celdas no alcanza (tiene que pagar dos cambios), tres celdas seguidas si. En 30 secuencias del pliegue de prueba, λ = 2 dio el mejor acierto por celda (0.876 contra 0.870 sin suavizado) y bajo los segmentos de 282 a 240 con 244 reales. Penalidades mas altas absorbian tramos reales. Se eligio mirando esas secuencias, asi que es algo optimista.
 
 **¿Por que Viterbi y no solo mediana?**
 La mediana decide celda por celda. Viterbi optimiza toda la secuencia con un costo explicito por cambio: es el estimador MAP de un modelo con un supuesto claro (los segmentos duran). Ademas tiene una version causal para el modo en vivo con la misma matriz de transicion.
@@ -632,16 +658,19 @@ Particion por archivo (y por artista en musica, que MUSAN informa) en 5 pliegues
 Porque pesa igual las cuatro clases. Con accuracy un modelo puede ignorar la clase minoritaria (ruido) y seguir dando un numero alto.
 
 **¿Como separan silencio de ruido?**
-Por nivel: silencio es senal sin eventos por debajo de −52 dBFS. Por forma de espectro no se pueden separar, porque el silencio real es ruido de fondo. Por eso no se normaliza la amplitud.
+Principalmente por nivel: silencio es senal sin eventos por debajo de −36 dBFS (medido despues del filtro) y el ruido de entrenamiento empieza en −34 dBFS. Tambien ayuda la forma: el silencio de un celular con AGC es casi todo grave, muy poco plano y con flujo alto. Por eso no se normaliza la amplitud. El umbral se corrigio despues de medir que un celular con AGC deja el silencio de una pieza en unos −41 dBFS.
 
 **¿Como simularon un celular?**
 Reverb sintetica, pasa-banda (300–3400 Hz o 100–7000 Hz), ganancia y saturacion, y codecs reales con ffmpeg (AMR-NB, MP3, AAC, Opus). Se entrena con eso y se mide aparte cuanto cae la accuracy con cada codec.
 
 **¿Cuanto mejoro respecto de la version anterior?**
-En el canal de celular completo, de 0.736 a 0.943; con AMR-NB, de 0.682 a 0.907; a 10 dB de SNR, de 0.717 a 0.910; a 8 kHz, de 0.670 a 0.918. El recall de ruido en la prueba paso de 0.659 a 0.897 (con otra particion, mas dificil). Ademas la resolucion temporal paso de 3 s a 0.5 s y la cola se clasifica.
+Sobre los mismos recortes: canal de celular completo de 0.742 a 0.939; AMR-NB de 0.663 a 0.871; SNR de 10 dB de 0.732 a 0.928; 8 kHz de 0.654 a 0.905. El recall de ruido en la prueba paso de 0.659 a 0.871 (con otra particion, mas dificil). En grabaciones reales de celular, de 0.379 a 0.678 por celda. Ademas la resolucion temporal paso de 3 s a 0.5 s y la cola se clasifica.
 
 **¿Por que Gradient Boosting y no SVM, si la diferencia es minima?**
-Porque el criterio (F1 macro en CV) se fijo antes de entrenar y GB quedo primero: 0.949 contra 0.946. La diferencia esta dentro de un desvio, asi que es honesto decir que son equivalentes. El modelo guardado pesa 1.9 MB.
+Porque el criterio (F1 macro en CV) se fijo antes de entrenar y GB quedo primero: 0.944 contra 0.938. La diferencia es del orden de un desvio, asi que es honesto decir que son practicamente equivalentes. El modelo guardado pesa 1.9 MB.
+
+**¿Por que falla el silencio grabado con el celular?**
+Porque el control automatico de ganancia sube el ruido de la pieza a −41 dBFS, con una forma que varia en el tiempo: queda indistinguible de un ruido ambiente bajo. Silencio y ruido se separan por nivel, y el AGC le quita significado al nivel absoluto. Se intento corregir con datos sinteticos y no alcanzo sin ajustar el modelo a ese archivo. La solucion de fondo seria grabar sin AGC o medir el silencio en forma relativa dentro de la misma grabacion.
 
 **¿Cual es la limitacion principal?**
-La resolucion de los bordes (~1 s, por la ventana de 3 s) y la definicion de silencio por nivel: una grabacion con AGC muy agresivo puede subir el ruido de sala por encima del umbral. Tambien la musica con voz cantada contra voz hablada con fondo musical, que es ambigua incluso para una persona.
+La resolucion de los bordes (~1 s, por la ventana de 3 s) y la definicion de silencio por nivel: depende de la ganancia del dispositivo. Con AGC el silencio queda en unos −41 dBFS (por eso el umbral de −36); un dispositivo todavia mas agresivo podria superarlo, y un ruido continuo pero muy bajo (un ventilador lejano) se va a etiquetar como silencio, que es coherente con la definicion pero discutible. Tambien la musica con voz cantada contra voz hablada con fondo musical, que es ambigua incluso para una persona.
