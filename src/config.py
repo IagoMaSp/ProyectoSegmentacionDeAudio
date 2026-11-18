@@ -49,3 +49,12 @@ MLP_HIDDEN_LAYERS = (64, 32)
 MLP_MAX_ITER = 300
 
 EPSILON = 1e-12
+
+# Acondicionamiento (src/filters.py). Justificacion en explicacion.md, seccion 3.
+HP_CUTOFF_HZ = 70.0
+HP_ORDER = 4
+NOTCH_FREQS_HZ = (50.0,)
+NOTCH_Q = 10.0
+AA_ATTENUATION_DB = 80.0
+AA_TRANSITION_FRACTION = 0.10
+FIGURES_DIR = BASE_DIR / "docs" / "figuras"

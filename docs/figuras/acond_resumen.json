@@ -1,0 +1,44 @@
+{
+  "pasa_altos": {
+    "orden": 4,
+    "fc_Hz": 70.0
+  },
+  "notch": {
+    "f0_Hz": [
+      50.0
+    ],
+    "Q": 10.0,
+    "BW_Hz": 5.0
+  },
+  "estable": true,
+  "radio_max_polos": 0.999019,
+  "modulo_una_pasada_dB": {
+    "20": -43.54,
+    "50": -240.0,
+    "70": -3.1,
+    "100": -0.26,
+    "1000": -0.0
+  },
+  "antialias": {
+    "48000": {
+      "L": 1,
+      "M": 3,
+      "coeficientes": 303
+    },
+    "44100": {
+      "L": 160,
+      "M": 441,
+      "coeficientes": 44265
+    },
+    "22050": {
+      "L": 320,
+      "M": 441,
+      "coeficientes": 44265
+    }
+  },
+  "aliasing_demo": {
+    "alias_3kHz_sin_antialias_dB": -3.1,
+    "alias_3kHz_con_antialias_dB": -100.2,
+    "alias_1kHz_tono_real_dB": 0.0
+  }
+}
