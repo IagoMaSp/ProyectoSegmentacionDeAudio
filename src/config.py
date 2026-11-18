@@ -78,7 +78,7 @@ TRAIN_HOP = 3.0                  # salto al extraer del dataset (sin solape)
 NOISE_TRAIN_HOP = 1.5            # la clase ruido es escasa: se extrae con solape
 SMOOTHING = "viterbi"            # "ninguno", "mediana" o "viterbi"
 MEDIAN_KERNEL = 5                # celdas de 0.5 s
-TRANSITION_PENALTY = 6.0         # -log(p_cambio), en nats, por celda de 0.5 s
+TRANSITION_PENALTY = 2.0         # costo de un cambio de clase, en nats, por celda de 0.5 s
 MIN_SEGMENT_DURATION = 1.5       # s; segmentos mas cortos se absorben
 LIVE_STEP = 1.0                  # s entre decisiones en el modo en vivo
 
@@ -99,8 +99,15 @@ TEST_FOLD = 4
 PER_CLASS_PER_FOLD = 3000
 CLIP_BANK_PER_CLASS = 900   # recortes crudos por clase y pliegue para augmentation
 TESTBANK_PER_CLASS = 300    # recortes crudos del pliegue de prueba para robustez
-ACTIVE_MIN_DBFS = -50.0     # ventanas activas por debajo de esto son silencio real
-SILENCE_DBFS_RANGE = (-85.0, -52.0)
+# Niveles. Un celular con control automatico de ganancia deja el ruido de una
+# pieza en silencio alrededor de -41 dBFS ya acondicionado (medido en data/real),
+# asi que el silencio llega hasta -36 dBFS, medido sobre la senal acondicionada.
+# Para no pisarse, el ruido de MUSAN por debajo de -34 dBFS (RMS de la ventana)
+# no se usa como clase ruido. Voz y musica conservan un piso mas bajo: a ellas
+# las separa el espectro, no el nivel.
+ACTIVE_MIN_DBFS = -50.0     # voz y musica por debajo de esto son silencio real
+NOISE_MIN_DBFS = -34.0      # ruido por debajo de esto es ruido de fondo = silencio
+SILENCE_DBFS_RANGE = (-75.0, -36.0)
 FILE_GAIN_DB_RANGE = (-10.0, 6.0)
 MIX_SNR_DB_RANGE = (0.0, 20.0)
 NOISE_BG_SNR_DB_RANGE = (8.0, 20.0)   # ruido por encima de voz/musica de fondo

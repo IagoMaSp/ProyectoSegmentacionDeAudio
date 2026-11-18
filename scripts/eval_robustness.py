@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from src.augment import SILENCE_KINDS, codec_batch, make_silence, mix_at_snr, phone_channel, rms_dbfs
-from src.config import (ACTIVE_MIN_DBFS, CATEGORIES, DATA_DIR, FIGURES_DIR, LABEL_TO_ID, REPORTS_DIR, SAMPLE_RATE,
+from src.config import (ACTIVE_MIN_DBFS, CATEGORIES, NOISE_MIN_DBFS, DATA_DIR, FIGURES_DIR, LABEL_TO_ID, REPORTS_DIR, SAMPLE_RATE,
                         SILENCE_DBFS_RANGE, TEST_FOLD, TESTBANK_PATH)
 from src.features import signal_to_windows
 from src.filters import naive_resample, resample
@@ -77,7 +77,7 @@ def make_sequences(clips: dict, n_seq: int, rng: np.random.Generator):
                 continue
             a = int(rng.integers(0, x.size - n + 1))
             seg = x[a:a + n]
-            if rms_dbfs(seg) > ACTIVE_MIN_DBFS:
+            if rms_dbfs(seg) > (NOISE_MIN_DBFS if cls == "ruido" else ACTIVE_MIN_DBFS):
                 return seg
         return np.resize(clips[cls][int(rng.integers(len(clips[cls])))], n)
 

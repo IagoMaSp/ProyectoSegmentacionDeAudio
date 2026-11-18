@@ -31,6 +31,7 @@ from src.augment import (
 )
 from src.config import (
     ACTIVE_MIN_DBFS,
+    NOISE_MIN_DBFS,
     CATEGORIES,
     CLIP_BANK_PER_CLASS,
     DATA_DIR,
@@ -150,10 +151,11 @@ def process_file(args: tuple[str, str, int]) -> dict:
         X = X[:0]
         starts = starts[:0]
     # descartar ventanas que en realidad son silencio (pausas largas, colas de pistas)
+    floor = NOISE_MIN_DBFS if category == "ruido" else ACTIVE_MIN_DBFS
     keep = []
     for s in starts:
         a = int(round(s * SAMPLE_RATE))
-        keep.append(rms_dbfs(x[a:a + SEGMENT_SAMPLES]) > ACTIVE_MIN_DBFS)
+        keep.append(rms_dbfs(x[a:a + SEGMENT_SAMPLES]) > floor)
     keep = np.array(keep, dtype=bool)
     clips = np.zeros((0, SEGMENT_SAMPLES), dtype=np.float32)
     if x.size >= SEGMENT_SAMPLES:
@@ -161,7 +163,7 @@ def process_file(args: tuple[str, str, int]) -> dict:
         st = rng.integers(0, x.size - SEGMENT_SAMPLES + 1, size=n_clips)
         cand = np.stack([x[s:s + SEGMENT_SAMPLES] for s in st]).astype(np.float32)
         levels = np.array([rms_dbfs(c) for c in cand])
-        clips = cand[levels > ACTIVE_MIN_DBFS]
+        clips = cand[levels > floor]
     pauses = _low_energy_audio(x, PAUSE_SECONDS_PER_FILE) if category == "voz" else np.zeros(0, np.float32)
     return {"X": X[keep].astype(np.float32), "clips": clips, "pauses": pauses}
 

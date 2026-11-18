@@ -3,6 +3,7 @@ import pytest
 
 from src import augment as A
 from src.config import SAMPLE_RATE, SILENCE_DBFS_RANGE
+from src.filters import condition_offline
 
 
 def test_mezcla_a_snr_exacta():
@@ -22,7 +23,8 @@ def test_silencio_en_rango_de_nivel(kind):
     pauses = 0.001 * rng.standard_normal(100000)
     for _ in range(5):
         x = A.make_silence(kind, rng, SILENCE_DBFS_RANGE, noise_bank=bank, speech_pauses=pauses)
-        assert SILENCE_DBFS_RANGE[0] - 1 <= A.rms_dbfs(x) <= SILENCE_DBFS_RANGE[1] + 1
+        # el nivel se define sobre la senal acondicionada
+        assert SILENCE_DBFS_RANGE[0] - 1 <= A.rms_dbfs(condition_offline(x)) <= SILENCE_DBFS_RANGE[1] + 1
 
 
 def test_dither_es_de_un_lsb():

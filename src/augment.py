@@ -14,7 +14,7 @@ import numpy as np
 from scipy import signal as sps
 
 from src.config import EPSILON, SAMPLE_RATE, SEGMENT_SAMPLES
-from src.filters import resample
+from src.filters import condition_offline, resample
 from src.preprocessing import ffmpeg_path, read_wav
 
 # ---------------------------------------------------------------------------
@@ -92,7 +92,7 @@ def dithered_digital_zero(n: int, rng: np.random.Generator) -> np.ndarray:
     return np.round(d / lsb) * lsb
 
 
-SILENCE_KINDS = ("sala", "rosa", "marron", "siseo", "dither", "pausas_voz", "zumbido", "muy_bajo")
+SILENCE_KINDS = ("sala", "rosa", "marron", "siseo", "dither", "pausas_voz", "zumbido", "muy_bajo", "agc_celular")
 
 
 def make_silence(kind: str, rng: np.random.Generator, level_range: tuple[float, float],
@@ -118,12 +118,29 @@ def make_silence(kind: str, rng: np.random.Generator, level_range: tuple[float, 
         return dithered_digital_zero(n, rng)
     elif kind == "zumbido":
         x = mains_hum(n, rng) + 10 ** (-rng.uniform(6, 20) / 20) * colored_noise(n, 1.0, rng)
+    elif kind == "agc_celular":
+        # Silencio de una pieza grabado con un celular con control automatico de
+        # ganancia: ruido de fondo de pendiente fuerte, casi todo por debajo de
+        # 1 kHz, cuyo nivel "bombea" lentamente cuando el AGC busca senal.
+        x = colored_noise(n, rng.uniform(1.5, 2.5), rng)
+        b, a = sps.butter(2, rng.uniform(400, 1500), fs=SAMPLE_RATE)
+        x = sps.lfilter(b, a, x) + 10 ** (-rng.uniform(25, 40) / 20) * rng.standard_normal(n)
+        t = np.arange(n) / SAMPLE_RATE
+        depth_db = rng.uniform(2.0, 8.0)
+        mod = np.sin(2 * np.pi * rng.uniform(0.3, 2.0) * t + rng.uniform(0, 2 * np.pi))
+        x = x * 10 ** (depth_db * mod / 20)
     elif kind == "muy_bajo":
         x = colored_noise(n, rng.uniform(0.0, 1.5), rng)
         level = rng.uniform(lo - 10, lo + 5)
     else:
         x = colored_noise(n, 1.0, rng)
-    x = set_level(x - np.mean(x), level)
+    # El nivel se fija sobre la senal ACONDICIONADA, que es la que ve el modelo: el
+    # ruido marron o rosa tiene mucha energia por debajo de 70 Hz que el pasa-altos
+    # saca, y fijarlo antes del filtro dejaba el silencio efectivo muy por debajo
+    # del rango nominal.
+    x = x - np.mean(x)
+    y = condition_offline(x)
+    x = x * (10 ** (level / 20) / (np.sqrt(np.mean(y ** 2)) + EPSILON))
     # cuantizar a 16 bits como haria el conversor A/D
     return np.round(x * 32768.0) / 32768.0
 
