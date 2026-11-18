@@ -244,7 +244,7 @@ def plot(out: dict) -> None:
         ax.set_xlim(0, 1)
         ax.set_xlabel("Accuracy (4 clases)")
         ax.set_title(f"Robustez frente a {title}", fontsize=9)
-        ax.legend(frameon=False, loc="lower right")
+        ax.legend(frameon=False, loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=2)
         for s in ("top", "right"):
             ax.spines[s].set_visible(False)
         fig.savefig(FIGURES_DIR / f"robustez_{key}.png", dpi=130, bbox_inches="tight")

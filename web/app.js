@@ -896,7 +896,7 @@ async function loadMetrics() {
   if (rob) {
     const table = (blk, head) => `<table class="compact"><thead><tr><th>${head}</th><th class="r">Nuevo</th>${blk.anterior ? '<th class="r">Anterior</th>' : ""}</tr></thead><tbody>
       ${blk.etiquetas.map((e, i) => `<tr><td class="mono">${esc(e)}</td><td class="r num">${pct(blk.nuevo[i])}</td>${blk.anterior ? `<td class="r num">${pct(blk.anterior[i])}</td>` : ""}</tr>`).join("")}</tbody></table>`;
-    html += `<section class="panel"><div class="panel-head"><h2 class="section-heading">Robustez (pliegue de prueba, ${rob.n_por_condicion} recortes por condición)</h2>
+    html += `<section class="panel"><div class="panel-head"><h2 class="section-heading">Robustez (pliegue de prueba, ${rob.n_por_condicion / 4} recortes por clase)</h2>
       <div class="legend-inline"><span class="legend-chip"><span class="swatch" style="background:${INK}"></span>Sistema nuevo</span>
       <span class="legend-chip"><span class="swatch" style="background:${FAINT}"></span>Versión anterior</span></div></div>
       <div class="two-col"><div class="fig"><canvas id="rob-snr" height="200"></canvas><span class="fig-caption">Accuracy de voz y música contra SNR [dB] con ruido del pliegue de prueba</span></div>
@@ -905,7 +905,7 @@ async function loadMetrics() {
   }
   if (rob && rob.segmentacion) {
     const v = rob.segmentacion.variantes;
-    html += `<section class="panel"><div class="panel-head"><h2 class="section-heading">Segmentación: suavizado sobre ${rob.segmentacion.n_secuencias} secuencias sintéticas</h2></div>
+    html += `<section class="panel"><div class="panel-head"><h2 class="section-heading">Segmentación: suavizado sobre ${rob.segmentacion.n_secuencias} secuencias de audio continuo del pliegue de prueba</h2></div>
       <div class="table-scroll"><table><thead><tr><th>Variante</th><th class="r">Acierto por celda</th><th class="r">Segmentos predichos / reales</th><th class="r">Error de borde (mediana)</th><th class="r">Error de borde (media)</th></tr></thead><tbody>
       ${Object.entries(v).map(([k, r]) => `<tr><td class="mono">${esc(k)}</td><td class="r num">${pct(r.accuracy_celdas)}</td>
       <td class="r num">${r.segmentos_predichos} / ${r.segmentos_reales}</td><td class="r num">${fmt(r.error_borde_mediana_s, 2)} s</td><td class="r num">${fmt(r.error_borde_medio_s, 2)} s</td></tr>`).join("")}
