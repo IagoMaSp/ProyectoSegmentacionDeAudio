@@ -161,4 +161,6 @@ Cuatro notas de voz de celular (Opus, 48 kHz, 20–25 s), por celdas de 0,5 s:
 
 Total 0,678 (sin suavizado 0,655; versión anterior 0,379). F1 macro 0,576.
 
+Sin `silencio_01` (etiqueta ambigua: la grabación tenía algo de ruido de fondo según quien grabó; pico de −26 dBFS al final): 134 celdas, acierto 0,881 (sin suavizado 0,851; versión anterior 0,448), F1 macro 0,873 sobre voz, música y ruido. La etiqueta no se cambió; se informan las dos cifras.
+
 Silencio: con el AGC del celular queda en −40 a −42 dBFS y con variación espectral en el tiempo (desvío de mfcc_1 de 2,9 contra 0,95 en el silencio sintético); es indistinguible de ruido ambiente bajo. Se probó subir el techo de nivel (−52 → −38), fijar el nivel tras el filtro, un silencio tipo AGC y otro armado con ambientes reales de MUSAN: la confianza en ruido bajó de 0,999 a 0,57 en el último experimento, sin cambiar la decisión. Las grabaciones se usaron para diagnosticar, así que ya no son una prueba independiente.

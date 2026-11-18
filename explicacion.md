@@ -552,6 +552,8 @@ Con cuatro notas de voz de celular (Opus, 48 kHz, 20–25 s cada una):
 
 Total: 0.678 por celda (0.655 sin suavizado; version anterior 0.379).
 
+**La etiqueta de `silencio_01` es ambigua:** segun quien grabo, la pieza no estaba del todo en silencio (habia algo de ruido de fondo), y la medicion lo acompana: un pico de −26 dBFS en el ultimo segundo y un fondo de −41 dBFS. Por eso se informa tambien el resultado sin ese archivo: **0.881 por celda** sobre voz, musica y ruido (0.851 sin suavizado; version anterior 0.448), F1 macro 0.873 sobre esas tres clases. No se cambio su etiqueta a "ruido": hacerlo despues de ver la prediccion inflaria la metrica.
+
 El **silencio** de un celular con control automatico de ganancia queda en −41 dBFS y con una forma espectral que varia en el tiempo (el desvio del primer MFCC es el triple que en los silencios sinteticos). Con eso es indistinguible de un ruido ambiente bajo: el AGC le quita significado al nivel absoluto, que es justamente lo que separa silencio de ruido. Se probaron tres correcciones (subir el techo de nivel, fijarlo despues del filtro, agregar un silencio tipo AGC y uno armado con ambientes reales de MUSAN): la confianza en "ruido" bajo de 0.999 a 0.57, pero no cambio la decision, y seguir habria sido ajustar el modelo a un solo archivo. Queda como limitacion documentada. Soluciones posibles: grabar con una app sin AGC, o detectar silencio en forma relativa (tramos mucho mas bajos que el resto de la misma grabacion), lo que requiere una referencia dentro del archivo.
 
 La **musica** sale como voz en los primeros 8 s. Es consistente con la confusion mas dificil del sistema: musica con voz cantada y poco acompanamiento. Con una sola grabacion no se puede distinguir entre esa explicacion y un error del modelo.
@@ -664,13 +666,13 @@ Principalmente por nivel: silencio es senal sin eventos por debajo de −36 dBFS
 Reverb sintetica, pasa-banda (300–3400 Hz o 100–7000 Hz), ganancia y saturacion, y codecs reales con ffmpeg (AMR-NB, MP3, AAC, Opus). Se entrena con eso y se mide aparte cuanto cae la accuracy con cada codec.
 
 **¿Cuanto mejoro respecto de la version anterior?**
-Sobre los mismos recortes: canal de celular completo de 0.742 a 0.939; AMR-NB de 0.663 a 0.871; SNR de 10 dB de 0.732 a 0.928; 8 kHz de 0.654 a 0.905. El recall de ruido en la prueba paso de 0.659 a 0.871 (con otra particion, mas dificil). En grabaciones reales de celular, de 0.379 a 0.678 por celda. Ademas la resolucion temporal paso de 3 s a 0.5 s y la cola se clasifica.
+Sobre los mismos recortes: canal de celular completo de 0.742 a 0.939; AMR-NB de 0.663 a 0.871; SNR de 10 dB de 0.732 a 0.928; 8 kHz de 0.654 a 0.905. El recall de ruido en la prueba paso de 0.659 a 0.871 (con otra particion, mas dificil). En grabaciones reales de celular, de 0.379 a 0.678 por celda (de 0.448 a 0.881 sin la grabacion de silencio, cuya etiqueta es ambigua). Ademas la resolucion temporal paso de 3 s a 0.5 s y la cola se clasifica.
 
 **¿Por que Gradient Boosting y no SVM, si la diferencia es minima?**
 Porque el criterio (F1 macro en CV) se fijo antes de entrenar y GB quedo primero: 0.944 contra 0.938. La diferencia es del orden de un desvio, asi que es honesto decir que son practicamente equivalentes. El modelo guardado pesa 1.9 MB.
 
 **¿Por que falla el silencio grabado con el celular?**
-Porque el control automatico de ganancia sube el ruido de la pieza a −41 dBFS, con una forma que varia en el tiempo: queda indistinguible de un ruido ambiente bajo. Silencio y ruido se separan por nivel, y el AGC le quita significado al nivel absoluto. Se intento corregir con datos sinteticos y no alcanzo sin ajustar el modelo a ese archivo. La solucion de fondo seria grabar sin AGC o medir el silencio en forma relativa dentro de la misma grabacion.
+Porque el control automatico de ganancia sube el ruido de la pieza a −41 dBFS, con una forma que varia en el tiempo: queda indistinguible de un ruido ambiente bajo. Silencio y ruido se separan por nivel, y el AGC le quita significado al nivel absoluto. Se intento corregir con datos sinteticos y no alcanzo sin ajustar el modelo a ese archivo. Ademas esa grabacion tenia algo de ruido de fondo real, asi que su etiqueta es ambigua: sin ella, el acierto en grabaciones de celular es 0.881. La solucion de fondo seria grabar sin AGC o medir el silencio en forma relativa dentro de la misma grabacion.
 
 **¿Cual es la limitacion principal?**
 La resolucion de los bordes (~1 s, por la ventana de 3 s) y la definicion de silencio por nivel: depende de la ganancia del dispositivo. Con AGC el silencio queda en unos −41 dBFS (por eso el umbral de −36); un dispositivo todavia mas agresivo podria superarlo, y un ruido continuo pero muy bajo (un ventilador lejano) se va a etiquetar como silencio, que es coherente con la definicion pero discutible. Tambien la musica con voz cantada contra voz hablada con fondo musical, que es ambigua incluso para una persona.
