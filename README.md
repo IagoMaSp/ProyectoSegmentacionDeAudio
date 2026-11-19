@@ -30,6 +30,16 @@ python3 -m venv .venv
 .venv/bin/python -m pytest -q
 ```
 
+En Windows (PowerShell), con Python 3.12:
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python -m src.server          # http://127.0.0.1:8000
+.venv\Scripts\python -m src.segmenter grabacion.m4a
+.venv\Scripts\python -m pytest -q
+```
+
 ## Estructura
 
 ```text

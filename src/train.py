@@ -278,7 +278,7 @@ def main() -> None:
     joblib.dump(bundle, C.MODEL_BUNDLE_PATH, compress=3)
     report["grupos_de_caracteristicas"] = {g: len(v) for g, v in FEATURE_GROUPS.items()}
     report["modelo_guardado"] = str(C.MODEL_BUNDLE_PATH.relative_to(C.BASE_DIR))
-    C.METRICS_PATH.write_text(json.dumps(report, indent=2, ensure_ascii=False))
+    C.METRICS_PATH.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"Modelo en {C.MODEL_BUNDLE_PATH} ({C.MODEL_BUNDLE_PATH.stat().st_size / 1e6:.1f} MB); "
           f"metricas en {C.METRICS_PATH}")
 

@@ -8,10 +8,23 @@ Todos los comandos se corren desde la raiz del proyecto.
 
 ## 1. Instalar las dependencias
 
+Se necesita Python 3.12. Para bajar el proyecto: `git clone -b mejoras https://github.com/IagoMaSp/ProyectoSegmentacionDeAudio.git`, o desde GitHub con **Code → Download ZIP**.
+
+Mac / Linux:
+
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
+
+Windows (PowerShell):
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+```
+
+En Windows todos los comandos de esta guia son iguales cambiando `.venv/bin/python` por `.venv\Scripts\python`. Si `py` no existe, instalar Python desde python.org marcando la opcion "Add python.exe to PATH" y usar `python -m venv .venv`.
 
 `imageio-ffmpeg` trae un binario de `ffmpeg`, asi que no hace falta instalarlo aparte; si hay uno en el sistema se usa ese. Se necesita para leer formatos comprimidos (mp3, m4a, ogg, amr) y para la simulacion de codecs.
 
@@ -27,6 +40,15 @@ El repositorio incluye `models/modelo.joblib` y sus metricas, asi que la interfa
 .venv/bin/python -m src.server            # http://127.0.0.1:8000
 .venv/bin/python -m src.server --port 9000
 ```
+
+Windows (PowerShell):
+
+```powershell
+.venv\Scripts\python -m src.server        # http://127.0.0.1:8000
+.venv\Scripts\python -m src.server --port 9000
+```
+
+Abrir la direccion en el navegador y cortar el servidor con `Ctrl+C`.
 
 Funciona sin conexion a internet. Pestanas:
 

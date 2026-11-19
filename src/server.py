@@ -320,7 +320,7 @@ def api_aliasing_wav(query: dict) -> bytes:
 
 def _read_json(path: Path) -> Any:
     try:
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
 
