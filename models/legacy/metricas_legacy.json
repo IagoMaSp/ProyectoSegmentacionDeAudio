@@ -1,0 +1,10 @@
+{
+  "descripcion": "Version anterior: MLP (64-32) sobre 18 caracteristicas, bloques de 3 s sin solape, sin acondicionamiento. Evaluado sobre su particion de prueba original (features/musan_features.npz del commit 35b14de, 35036 ventanas).",
+  "modelo": "MLPClassifier",
+  "accuracy": 0.9642,
+  "f1_macro": 0.9069,
+  "recall": {"musica": 0.9476, "voz": 0.9878, "ruido": 0.6589, "silencio": 0.9957},
+  "f1": {"musica": 0.9511, "voz": 0.9868, "ruido": 0.7082, "silencio": 0.9814},
+  "confusion": [[9112, 177, 268, 59], [58, 14932, 38, 88], [342, 39, 1018, 146], [32, 0, 6, 8721]],
+  "knn": {"accuracy": 0.9286, "f1_macro": 0.8083, "recall_ruido": 0.2835}
+}

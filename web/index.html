@@ -4,1067 +4,282 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Segmentación de audio — Muestreo</title>
-<style>
-  :root {
-    --bg: #FBFBF8;
-    --surface: #FFFFFF;
-    --surface-muted: #F3F2EC;
-    --ink: #171717;
-    --ink-muted: #52524E;
-    --rule: #171717;
-    --rule-soft: #D6D5CE;
-    --rule-faint: #E8E7E0;
-    --c-musica: #2563EB;
-    --c-voz: #059669;
-    --c-ruido: #D97706;
-    --c-silencio: #94A3B8;
-    --c-error: #B91C1C;
-    --c-error-bg: #FEF2F2;
-    --c-active-row: #EFF6FF;
-    --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; }
-
-  ::selection {
-    background: var(--ink);
-    color: var(--bg);
-  }
-
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: var(--surface-muted); }
-  ::-webkit-scrollbar-thumb { background: #A8A79F; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--ink-muted); }
-
-  html {
-    background: var(--bg);
-    color: var(--ink);
-    font-family: var(--font-sans);
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  body {
-    margin: 0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--ink);
-    outline-offset: 2px;
-  }
-
-  .num {
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* Header */
-  .site-header {
-    border-bottom: 1px solid var(--rule);
-    background: var(--bg);
-  }
-
-  .header-inner {
-    max-width: 1120px;
-    margin: 0 auto;
-    padding: 1.125rem 1.5rem;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.75rem 1.5rem;
-  }
-
-  .site-title {
-    margin: 0;
-    font-size: 1.375rem;
-    font-weight: 700;
-    letter-spacing: -0.025em;
-    line-height: 1.2;
-  }
-
-  .site-specs {
-    margin: 0;
-    font-size: 0.8125rem;
-    color: var(--ink-muted);
-    font-family: var(--font-mono);
-  }
-
-  /* Main container */
-  .workspace {
-    max-width: 1120px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 1.75rem 1.5rem 3rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.75rem;
-  }
-
-  /* Upload panel */
-  .upload-panel {
-    border: 1px solid var(--rule);
-    background: var(--surface-muted);
-    padding: 0.75rem;
-  }
-
-  .upload-form {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: stretch;
-    border: 1px solid var(--rule);
-    background: var(--surface);
-  }
-
-  .dropzone {
-    position: relative;
-    padding: 1.25rem 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    cursor: pointer;
-    background: var(--surface);
-    transition: background-color 140ms ease;
-    min-width: 0;
-  }
-
-  .dropzone:hover,
-  .dropzone.is-dragover {
-    background: var(--surface-muted);
-  }
-
-  .dropzone.is-dragover {
-    box-shadow: inset 0 0 0 2px var(--ink);
-  }
-
-  .dropzone-input {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
-  }
-
-  .dropzone-icon {
-    flex-shrink: 0;
-    width: 2.25rem;
-    height: 2.25rem;
-    border: 1px solid var(--rule-soft);
-    background: var(--surface-muted);
-    display: grid;
-    place-items: center;
-    color: var(--ink);
-  }
-
-  .dropzone-copy {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-  }
-
-  .dropzone-primary {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: var(--ink);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .dropzone-secondary {
-    font-size: 0.8125rem;
-    color: var(--ink-muted);
-  }
-
-  .submit-btn {
-    border: none;
-    border-left: 1px solid var(--rule);
-    background: var(--ink);
-    color: var(--bg);
-    padding: 0 1.75rem;
-    font-family: inherit;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.625rem;
-    min-width: 10.5rem;
-    transition: background-color 140ms ease, opacity 140ms ease;
-  }
-
-  .submit-btn:hover:not(:disabled) {
-    background: #2E2E2B;
-  }
-
-  .submit-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-
-  /* Progress rail */
-  .progress-rail {
-    height: 3px;
-    margin-top: 0.5rem;
-    background: var(--rule-faint);
-    display: none;
-  }
-
-  .progress-rail.is-active {
-    display: block;
-    background: var(--ink);
-    opacity: 0.75;
-    transition: opacity 200ms ease;
-  }
-
-  /* Status & Error banner */
-  .status-line {
-    margin: 0;
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-    border: 1px solid var(--rule-soft);
-    background: var(--surface-muted);
-    color: var(--ink);
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .status-line:empty {
-    display: none;
-  }
-
-  .status-line.is-error {
-    border-color: var(--c-error);
-    background: var(--c-error-bg);
-    color: var(--c-error);
-    font-weight: 500;
-  }
-
-  /* Empty guide state */
-  .empty-state {
-    border: 1px solid var(--rule-soft);
-    background: var(--surface);
-    padding: 2.5rem 1.5rem;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1.5rem;
-  }
-
-  .empty-state[hidden] { display: none; }
-
-  .empty-step-title {
-    margin: 0 0 0.375rem;
-    font-size: 0.9375rem;
-    font-weight: 600;
-  }
-
-  .empty-step-desc {
-    margin: 0;
-    font-size: 0.875rem;
-    color: var(--ink-muted);
-    max-width: 40ch;
-  }
-
-  .legend-inline {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1rem;
-    margin-top: 0.5rem;
-  }
-
-  .legend-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 0.8125rem;
-    color: var(--ink);
-  }
-
-  .swatch {
-    width: 0.75rem;
-    height: 0.75rem;
-    display: inline-block;
-    flex-shrink: 0;
-  }
-
-  /* Results container */
-  .results[hidden] { display: none; }
-  .results {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  /* 4-column summary strip */
-  .summary-strip {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    border: 1px solid var(--rule);
-    background: var(--surface);
-  }
-
-  .stat-btn {
-    appearance: none;
-    background: transparent;
-    border: none;
-    border-right: 1px solid var(--rule-soft);
-    padding: 0.875rem 1rem;
-    text-align: left;
-    cursor: pointer;
-    font-family: inherit;
-    color: var(--ink);
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-    transition: background-color 120ms ease;
-  }
-
-  .stat-btn:last-child { border-right: none; }
-  .stat-btn:hover { background: var(--surface-muted); }
-  .stat-btn.is-selected {
-    background: var(--surface-muted);
-    box-shadow: inset 0 -3px 0 var(--ink);
-  }
-
-  .stat-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--ink-muted);
-  }
-
-  .stat-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    color: var(--ink);
-  }
-
-  .stat-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
-  }
-
-  .stat-seconds {
-    font-size: 0.8125rem;
-    font-weight: 400;
-    color: var(--ink-muted);
-    margin-left: 0.25rem;
-  }
-
-  /* Stratigraphic timeline box */
-  .timeline-panel {
-    border: 1px solid var(--rule);
-    background: var(--surface);
-    padding: 1.25rem 1.25rem 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .timeline-top {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .section-heading {
-    margin: 0;
-    font-size: 0.9375rem;
-    font-weight: 600;
-  }
-
-  .hover-readout {
-    font-size: 0.8125rem;
-    font-family: var(--font-mono);
-    color: var(--ink-muted);
-  }
-
-  .ruler {
-    display: flex;
-    justify-content: space-between;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--ink-muted);
-    padding-bottom: 0.25rem;
-    border-bottom: 1px solid var(--rule-soft);
-  }
-
-  .strata-wrap {
-    position: relative;
-    padding: 0.25rem 0;
-  }
-
-  .strata-bar {
-    display: flex;
-    height: 44px;
-    border: 1px solid var(--rule);
-    background: var(--surface-muted);
-    overflow: hidden;
-    position: relative;
-  }
-
-  .strata-seg {
-    height: 100%;
-    border: none;
-    padding: 0;
-    margin: 0;
-    cursor: pointer;
-    position: relative;
-    transition: opacity 120ms ease, filter 120ms ease;
-  }
-
-  .strata-seg + .strata-seg {
-    box-shadow: inset 1px 0 0 rgba(23, 23, 23, 0.2);
-  }
-
-  .strata-seg:hover {
-    filter: brightness(1.08);
-  }
-
-  .strata-seg.is-dimmed {
-    opacity: 0.28;
-  }
-
-  .strata-tail {
-    height: 100%;
-    background: #E5E4DC;
-    box-shadow: inset 1px 0 0 rgba(23, 23, 23, 0.2);
-  }
-
-  .playhead {
-    position: absolute;
-    top: -2px;
-    bottom: -2px;
-    left: 0%;
-    width: 2px;
-    background: var(--ink);
-    pointer-events: none;
-    display: none;
-  }
-
-  .playhead.is-visible {
-    display: block;
-  }
-
-  .playhead::before {
-    content: "";
-    position: absolute;
-    top: -5px;
-    left: -4px;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid var(--ink);
-  }
-
-  .player-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem 1rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--rule-faint);
-  }
-
-  audio {
-    flex: 1;
-    min-width: 240px;
-    height: 36px;
-  }
-
-  .now-playing {
-    font-size: 0.8125rem;
-    padding: 0.375rem 0.625rem;
-    border: 1px solid var(--rule-soft);
-    background: var(--surface-muted);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-  }
-
-  /* Table section */
-  .table-panel {
-    border: 1px solid var(--rule);
-    background: var(--surface);
-  }
-
-  .table-toolbar {
-    padding: 0.875rem 1.25rem;
-    border-bottom: 1px solid var(--rule);
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.75rem;
-    background: var(--surface-muted);
-  }
-
-  .table-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .ghost-btn {
-    appearance: none;
-    background: var(--surface);
-    border: 1px solid var(--rule-soft);
-    color: var(--ink);
-    padding: 0.375rem 0.75rem;
-    font-family: inherit;
-    font-size: 0.8125rem;
-    font-weight: 500;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    transition: border-color 120ms ease, background-color 120ms ease;
-  }
-
-  .ghost-btn:hover {
-    border-color: var(--ink);
-    background: var(--bg);
-  }
-
-  .table-scroll {
-    overflow-x: auto;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-  }
-
-  th {
-    text-align: left;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--ink-muted);
-    padding: 0.6875rem 1.25rem;
-    border-bottom: 1px solid var(--rule);
-    background: var(--surface);
-  }
-
-  td {
-    padding: 0.6875rem 1.25rem;
-    border-bottom: 1px solid var(--rule-faint);
-    vertical-align: middle;
-  }
-
-  tbody tr {
-    cursor: pointer;
-    transition: background-color 100ms ease;
-  }
-
-  tbody tr:hover {
-    background: var(--surface-muted);
-  }
-
-  tbody tr.is-playing {
-    background: var(--c-active-row);
-    font-weight: 600;
-  }
-
-  tbody tr:last-child td {
-    border-bottom: none;
-  }
-
-  .cat-cell {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    text-transform: capitalize;
-  }
-
-  .row-play-hint {
-    color: var(--ink-muted);
-    font-size: 0.75rem;
-    text-align: right;
-  }
-
-  tbody tr:hover .row-play-hint,
-  tbody tr.is-playing .row-play-hint {
-    color: var(--ink);
-  }
-
-  .spinner {
-    width: 15px;
-    height: 15px;
-    border: 2px solid rgba(251, 251, 248, 0.35);
-    border-top-color: var(--bg);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  @media (max-width: 780px) {
-    .upload-form { grid-template-columns: 1fr; }
-    .submit-btn {
-      border-left: none;
-      border-top: 1px solid var(--rule);
-      padding: 0.875rem 1.25rem;
-    }
-    .summary-strip { grid-template-columns: repeat(2, 1fr); }
-    .stat-btn:nth-child(2) { border-right: none; }
-    .stat-btn:nth-child(1),
-    .stat-btn:nth-child(2) { border-bottom: 1px solid var(--rule-soft); }
-  }
-
-  @media (max-width: 480px) {
-    .header-inner, .workspace { padding-left: 1rem; padding-right: 1rem; }
-    th, td { padding: 0.625rem 0.75rem; }
-  }
-</style>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <header class="site-header">
     <div class="header-inner">
       <h1 class="site-title">Segmentación de audio</h1>
-      <p class="site-specs">Bloques de 3 s · 16 kHz mono · Muestreo</p>
+      <p class="site-specs" id="specs">16 kHz mono · ventana de 3 s cada 0,5 s</p>
     </div>
+    <nav class="tabs" role="tablist" aria-label="Secciones">
+      <button class="tab" role="tab" data-view="archivo" aria-selected="true">Archivo</button>
+      <button class="tab" role="tab" data-view="vivo" aria-selected="false">En vivo</button>
+      <button class="tab" role="tab" data-view="filtros" aria-selected="false">Acondicionamiento</button>
+      <button class="tab" role="tab" data-view="aliasing" aria-selected="false">Aliasing</button>
+      <button class="tab" role="tab" data-view="metricas" aria-selected="false">Métricas</button>
+    </nav>
   </header>
 
   <main class="workspace">
-    <section class="upload-panel" aria-label="Cargar archivo de audio">
-      <form id="form" class="upload-form">
-        <label class="dropzone" id="dropzone" for="file">
-          <input class="dropzone-input" type="file" id="file" accept="audio/*,video/*" required>
-          <span class="dropzone-icon" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-          </span>
-          <span class="dropzone-copy">
-            <span class="dropzone-primary" id="file-label">Arrastrá un archivo de audio o video, o hacé clic para elegir</span>
-            <span class="dropzone-secondary" id="file-meta">WAV, MP3, OGG, FLAC, M4A, OPUS · Máximo 200 MB</span>
-          </span>
-        </label>
-        <button type="submit" class="submit-btn" id="submit-btn">
-          <span id="btn-text">Procesar audio</span>
-        </button>
-      </form>
-      <div class="progress-rail" id="progress-rail" aria-hidden="true"></div>
-    </section>
+    <p id="model-warning" class="status-line is-error" hidden></p>
 
-    <p id="status" class="status-line" role="status" aria-live="polite"></p>
+    <!-- ARCHIVO ======================================================== -->
+    <section class="view" id="view-archivo" aria-label="Segmentar un archivo">
+      <section class="upload-panel" aria-label="Cargar archivo de audio">
+        <form id="form" class="upload-form">
+          <label class="dropzone" id="dropzone" for="file">
+            <input class="dropzone-input" type="file" id="file" accept="audio/*,video/*" required>
+            <span class="dropzone-icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </span>
+            <span class="dropzone-copy">
+              <span class="dropzone-primary" id="file-label">Arrastrá un archivo de audio o video, o hacé clic para elegirlo</span>
+              <span class="dropzone-secondary" id="file-meta">WAV, MP3, M4A, OGG, FLAC, OPUS, AMR · cualquier frecuencia · hasta 200 MB</span>
+            </span>
+          </label>
+          <button type="submit" class="btn-primary" id="submit-btn"><span id="btn-text">Procesar audio</span></button>
+        </form>
+        <div class="params" aria-label="Parámetros de segmentación">
+          <label>Salto de ventana
+            <select id="p-salto"><option value="0.25">0,25 s</option><option value="0.5" selected>0,5 s</option><option value="1">1 s</option><option value="3">3 s (sin solape)</option></select>
+          </label>
+          <label>Suavizado
+            <select id="p-suavizado"><option value="viterbi" selected>Viterbi</option><option value="mediana">Mediana</option><option value="ninguno">Ninguno</option></select>
+          </label>
+          <label title="Costo, en nats, de cambiar de clase entre dos celdas de 0,5 s">Penalidad de cambio
+            <input type="number" id="p-penalidad" value="2" min="0" max="30" step="0.5">
+          </label>
+          <label>Duración mínima
+            <input type="number" id="p-minimo" value="1.5" min="0" max="10" step="0.5"> s
+          </label>
+        </div>
+      </section>
 
-    <section id="empty-state" class="empty-state" aria-label="Cómo funciona">
-      <div>
-        <h2 class="empty-step-title">1. Decodificación uniforme</h2>
-        <p class="empty-step-desc">El servidor convierte cualquier pista de audio o video a 16 kHz mono mediante ffmpeg y escala la señal PCM.</p>
-      </div>
-      <div>
-        <h2 class="empty-step-title">2. Clasificación cada 3 segundos</h2>
-        <p class="empty-step-desc">Se extraen características espectrales y temporales para etiquetar cada bloque en cuatro categorías:</p>
-        <div class="legend-inline">
+      <p id="status" class="status-line" role="status" aria-live="polite"></p>
+
+      <section id="empty-state" class="how" aria-label="Cómo funciona">
+        <ol>
+          <li><strong>Decodificación</strong><span>ffmpeg lee el archivo en su frecuencia original; el remuestreo a 16 kHz lo hace el proyecto, con un FIR anti-alias de 80 dB.</span></li>
+          <li><strong>Acondicionamiento</strong><span>Pasa-altos Butterworth de 70 Hz (rumble y continua) y notch de 50 Hz (red eléctrica), aplicados con fase nula.</span></li>
+          <li><strong>Ventana deslizante</strong><span>Cada 0,5 s se toma una ventana de 3 s, se calculan 64 características (energía, ZCR, centroide, subbandas, MFCC, flujo, planitud) y el modelo da una probabilidad por clase.</span></li>
+          <li><strong>Suavizado</strong><span>Viterbi con penalidad por cambio y duración mínima de segmento. La cola final se clasifica con una ventana alineada al final.</span></li>
+          <li><strong>Inspección</strong><span>Hacé clic en un segmento para escucharlo y ver por qué se clasificó así.</span></li>
+        </ol>
+        <div class="legend-inline" style="padding:.7rem 0">
           <span class="legend-chip"><span class="swatch" style="background:var(--c-musica)"></span>Música</span>
           <span class="legend-chip"><span class="swatch" style="background:var(--c-voz)"></span>Voz</span>
           <span class="legend-chip"><span class="swatch" style="background:var(--c-ruido)"></span>Ruido</span>
           <span class="legend-chip"><span class="swatch" style="background:var(--c-silencio)"></span>Silencio</span>
         </div>
-      </div>
-      <div>
-        <h2 class="empty-step-title">3. Exploración interactiva</h2>
-        <p class="empty-step-desc">Hacé clic sobre la línea de tiempo o en cualquier fila de la tabla para saltar y reproducir ese intervalo exacto.</p>
-      </div>
-    </section>
+      </section>
 
-    <section id="results" class="results" hidden aria-label="Resultados de segmentación">
-      <div class="summary-strip" id="summary-strip" role="group" aria-label="Resumen por categoría y filtro"></div>
+      <section id="results" class="view" hidden aria-label="Resultados">
+        <div class="summary-strip" id="summary-strip" role="group" aria-label="Resumen por categoría"></div>
 
-      <section class="timeline-panel" aria-label="Línea de tiempo y reproductor">
-        <div class="timeline-top">
-          <h2 class="section-heading">Perfil temporal de segmentos</h2>
-          <span class="hover-readout num" id="hover-readout">Hacé clic en un bloque para reproducir</span>
-        </div>
-
-        <div>
-          <div class="ruler num" id="ruler" aria-hidden="true"></div>
-          <div class="strata-wrap">
+        <section class="timeline-panel" aria-label="Línea de tiempo">
+          <div class="timeline-top">
+            <h2 class="section-heading">Perfil temporal</h2>
+            <span class="hover-readout num" id="hover-readout">Hacé clic en un bloque para escucharlo y ver el detalle</span>
+          </div>
+          <div class="strata-wrap" id="timeline-wrap">
+            <div class="ruler num" id="ruler" aria-hidden="true"></div>
+            <div class="track-label">Forma de onda</div>
+            <canvas class="track" id="wave-canvas" height="56"></canvas>
+            <div class="track-label">Segmentos</div>
             <div class="strata-bar" id="bar" role="list" aria-label="Segmentos clasificados"></div>
+            <div class="track-label">Probabilidad por celda de <span id="cell-label">0,5 s</span> (antes del suavizado)</div>
+            <canvas class="track" id="prob-canvas" height="64"></canvas>
             <div class="playhead" id="playhead" aria-hidden="true"></div>
           </div>
-        </div>
-
-        <div class="player-row">
-          <audio id="player" controls></audio>
-          <div class="now-playing num" id="now-playing" hidden>
-            <span class="swatch" id="now-swatch"></span>
-            <span id="now-text">—</span>
+          <div class="player-row">
+            <audio id="player" controls></audio>
+            <div class="now-playing num" id="now-playing" hidden><span class="swatch" id="now-swatch"></span><span id="now-text"></span></div>
           </div>
-        </div>
+        </section>
+
+        <section class="panel" id="why-panel" hidden aria-label="Por qué se clasificó así">
+          <div class="panel-head">
+            <h2 class="section-heading" id="why-title">Detalle del segmento</h2>
+            <button type="button" class="ghost-btn" id="why-close">Cerrar</button>
+          </div>
+          <div class="why-grid">
+            <div class="why-col">
+              <div class="fig"><canvas id="why-wave" height="80"></canvas><span class="fig-caption">Forma de onda (sin filtrar)</span></div>
+              <div class="fig"><canvas id="why-spec" height="150"></canvas><span class="fig-caption">Espectrograma de la señal acondicionada · frames de 30 ms, Hann, 0–8 kHz</span></div>
+              <div class="small-multiples">
+                <div class="fig"><canvas id="why-rms" height="80"></canvas><span class="fig-caption">RMS por frame [dBFS]</span></div>
+                <div class="fig"><canvas id="why-zcr" height="80"></canvas><span class="fig-caption">Tasa de cruces por cero</span></div>
+                <div class="fig"><canvas id="why-cent" height="80"></canvas><span class="fig-caption">Centroide espectral [Hz]</span></div>
+                <div class="fig"><canvas id="why-flat" height="80"></canvas><span class="fig-caption">Planitud espectral</span></div>
+              </div>
+            </div>
+            <div class="why-col">
+              <p class="verdict" id="why-verdict"></p>
+              <div>
+                <h3 class="sub-heading">Probabilidad media del segmento</h3>
+                <div class="prob-list" id="why-probs"></div>
+              </div>
+              <div class="fig">
+                <h3 class="sub-heading">Ubicación en el espacio de características (PCA 2D)</h3>
+                <canvas id="why-pca" height="260"></canvas>
+                <span class="fig-caption" id="why-pca-cap"></span>
+              </div>
+              <div>
+                <h3 class="sub-heading" id="why-traits-title">Rasgos que más pesaron</h3>
+                <table class="compact"><thead><tr><th>Característica</th><th class="r">z</th><th class="r">z clase</th><th class="r">z alt.</th></tr></thead><tbody id="why-traits"></tbody></table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" aria-label="Tabla de intervalos">
+          <div class="panel-head">
+            <h2 class="section-heading" id="table-heading">Intervalos detectados</h2>
+            <div class="params">
+              <button type="button" class="ghost-btn" id="clear-filter" hidden>Mostrar todas</button>
+              <button type="button" class="ghost-btn" id="export-csv">CSV</button>
+              <button type="button" class="ghost-btn" id="export-json">JSON</button>
+              <button type="button" class="ghost-btn" id="export-srt">SRT</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table id="table" class="clickable">
+              <thead><tr><th>Desde (s)</th><th>Hasta (s)</th><th>Duración</th><th>Categoría</th><th>Confianza</th><th class="r">Detalle</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
       </section>
+    </section>
 
-      <section class="table-panel" aria-label="Tabla de intervalos">
-        <div class="table-toolbar">
-          <h2 class="section-heading" id="table-heading">Intervalos detectados</h2>
-          <div class="table-actions">
-            <button type="button" class="ghost-btn" id="clear-filter" hidden>Mostrar todas</button>
-            <button type="button" class="ghost-btn" id="export-csv">Exportar CSV</button>
-            <button type="button" class="ghost-btn" id="export-json">Exportar JSON</button>
+    <!-- EN VIVO ======================================================== -->
+    <section class="view" id="view-vivo" hidden aria-label="Clasificación en vivo">
+      <section class="panel">
+        <div class="panel-head">
+          <h2 class="section-heading">Micrófono</h2>
+          <div class="params">
+            <button type="button" class="btn-solid" id="live-toggle">Iniciar micrófono</button>
+            <span class="mono muted num" id="live-info">—</span>
           </div>
         </div>
-        <div class="table-scroll">
-          <table id="table">
-            <thead>
-              <tr>
-                <th>Desde (s)</th>
-                <th>Hasta (s)</th>
-                <th>Duración</th>
-                <th>Categoría</th>
-                <th style="text-align:right">Acción</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+        <div class="live-grid">
+          <div>
+            <h3 class="sub-heading">Espectrograma en tiempo real (últimos 10 s, señal acondicionada)</h3>
+            <canvas id="live-spec" class="track" height="220"></canvas>
+            <h3 class="sub-heading" style="margin-top:.9rem">Decisiones (últimos 60 s)</h3>
+            <canvas id="live-strip" class="track" height="40"></canvas>
+          </div>
+          <div>
+            <div class="live-label" id="live-label">—<small id="live-sub"></small></div>
+            <div>
+              <h3 class="sub-heading">Probabilidades · barra: suavizada, marca: cruda</h3>
+              <div class="prob-list" id="live-probs"></div>
+            </div>
+            <div>
+              <h3 class="sub-heading">Nivel de entrada</h3>
+              <div class="meter"><i id="live-meter"></i></div>
+              <span class="fig-caption num" id="live-level">— dBFS</span>
+            </div>
+            <p class="note">Cada segundo se clasifica la última ventana de 3 s. La etiqueta pasa por un filtro HMM hacia adelante con la misma penalidad que el Viterbi offline, así que un cambio necesita uno o dos segundos sostenidos para confirmarse. El navegador captura sin cancelación de eco ni supresión de ruido, que alterarían justamente lo que se quiere medir.</p>
+          </div>
         </div>
       </section>
     </section>
+
+    <!-- ACONDICIONAMIENTO ============================================== -->
+    <section class="view" id="view-filtros" hidden aria-label="Acondicionamiento">
+      <section class="panel">
+        <div class="panel-head"><h2 class="section-heading">Diseño de la cascada</h2><span class="mono muted" id="f-summary"></span></div>
+        <div class="two-col">
+          <div>
+            <dl class="kv" id="f-params"></dl>
+          </div>
+          <div>
+            <p class="note">El pasa-altos saca la continua, el rumble de manipulación y el viento sin tocar la fundamental de la voz (la más grave ronda 85 Hz). El notch apunta a la red de 50 Hz con un ancho de 5 Hz: tolera el desvío de frecuencia de la red y no se lleva nada útil. Ambos se implementan como secciones de segundo orden; offline se aplican ida y vuelta (fase nula, módulo al cuadrado) y en vivo dos veces hacia adelante, con el mismo módulo.</p>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h2 class="section-heading">Respuesta en frecuencia</h2>
+          <div class="legend-inline">
+            <span class="legend-chip"><span class="swatch" style="background:var(--c-musica)"></span>Pasa-altos</span>
+            <span class="legend-chip"><span class="swatch" style="background:var(--c-ruido)"></span>Notch</span>
+            <span class="legend-chip"><span class="swatch" style="background:var(--ink)"></span>Cascada</span>
+            <span class="legend-chip"><span class="swatch" style="background:var(--ink-faint)"></span>Cascada con filtfilt</span>
+          </div>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:1rem">
+          <div class="fig"><canvas id="f-mag" height="240"></canvas><span class="fig-caption">Módulo [dB] contra frecuencia [Hz], eje logarítmico</span></div>
+          <div class="two-col" style="border-top:1px solid var(--rule-soft)">
+            <div class="fig"><canvas id="f-phase" height="170"></canvas><span class="fig-caption">Fase de la cascada [grados]; con filtfilt es cero</span></div>
+            <div class="fig"><canvas id="f-gd" height="170"></canvas><span class="fig-caption">Retardo de grupo de una pasada [ms]</span></div>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h2 class="section-heading">Polos y ceros</h2>
+          <div class="params"><button type="button" class="ghost-btn" id="pz-zoom" aria-pressed="true">Zoom cerca de z = 1</button></div>
+        </div>
+        <div class="two-col">
+          <div class="fig"><canvas id="f-pz" height="300"></canvas><span class="fig-caption" id="pz-cap"></span></div>
+          <div class="fig"><canvas id="f-aa" height="300"></canvas><span class="fig-caption" id="aa-cap"></span></div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2 class="section-heading">Antes y después del filtro</h2></div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:.75rem">
+          <p class="note" id="ab-note">Procesá un archivo en la pestaña Archivo para comparar acá la señal decodificada y la acondicionada (las dos a 16 kHz). Con auriculares se nota la falta de graves en grabaciones con viento o zumbido de red.</p>
+          <div class="ab-row">
+            <button type="button" class="ghost-btn" id="ab-orig" aria-pressed="true" disabled>A · original</button>
+            <button type="button" class="ghost-btn" id="ab-cond" aria-pressed="false" disabled>B · acondicionada</button>
+            <audio id="ab-player" controls></audio>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ALIASING ======================================================= -->
+    <section class="view" id="view-aliasing" hidden aria-label="Demo de aliasing">
+      <section class="panel">
+        <div class="panel-head">
+          <h2 class="section-heading">Bajar la frecuencia de muestreo con y sin anti-alias</h2>
+          <div class="params">
+            <label>Señal <select id="al-modo"><option value="tono">Tono</option><option value="barrido">Barrido 0,1–20 kHz</option></select></label>
+            <label id="al-tono-wrap">Tono <input type="range" id="al-tono" min="200" max="20000" step="100" value="5000"> <span class="mono num" id="al-tono-val">5000 Hz</span></label>
+            <label>Nueva fs <select id="al-fs"><option value="6000">6000 Hz</option><option value="8000" selected>8000 Hz</option><option value="11025">11025 Hz</option><option value="16000">16000 Hz</option></select></label>
+          </div>
+        </div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:1rem">
+          <p class="note" id="al-explain"></p>
+          <div id="al-tone-figs" style="display:flex;flex-direction:column;gap:1rem">
+            <div class="fig"><canvas id="al-orig" height="150"></canvas><span class="fig-caption">Original a 48 kHz (línea vertical: nueva frecuencia de Nyquist)</span></div>
+            <div class="two-col" style="border-top:1px solid var(--rule-soft)">
+              <div class="fig"><canvas id="al-sin" height="170"></canvas><span class="fig-caption">Diezmado sin filtro: una muestra de cada M</span></div>
+              <div class="fig"><canvas id="al-con" height="170"></canvas><span class="fig-caption">resample_poly con FIR anti-alias del proyecto</span></div>
+            </div>
+          </div>
+          <div id="al-sweep-figs" class="two-col" hidden style="border-top:1px solid var(--rule-soft)">
+            <div class="fig"><canvas id="al-sg-sin" height="200"></canvas><span class="fig-caption">Sin anti-alias: el barrido rebota en Nyquist</span></div>
+            <div class="fig"><canvas id="al-sg-con" height="200"></canvas><span class="fig-caption">Con anti-alias: lo que supera Nyquist desaparece</span></div>
+          </div>
+          <div class="ab-row">
+            <button type="button" class="ghost-btn" data-al="original">Escuchar original</button>
+            <button type="button" class="ghost-btn" data-al="sin">Escuchar sin anti-alias</button>
+            <button type="button" class="ghost-btn" data-al="con">Escuchar con anti-alias</button>
+            <audio id="al-player" controls></audio>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- METRICAS ======================================================= -->
+    <section class="view" id="view-metricas" hidden aria-label="Métricas"></section>
   </main>
 
-<script>
-const CATEGORIES = [
-  { key: "musica", label: "Música", color: "#2563EB" },
-  { key: "voz", label: "Voz", color: "#059669" },
-  { key: "ruido", label: "Ruido", color: "#D97706" },
-  { key: "silencio", label: "Silencio", color: "#94A3B8" },
-];
-const COLOR_MAP = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.color]));
-const LABEL_MAP = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.label]));
-const MAX_BYTES = 200 * 1024 * 1024;
-
-const $ = (id) => document.getElementById(id);
-
-let currentData = null;
-let activeFilter = null;
-let objectUrl = null;
-
-function formatBytes(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-function formatTime(sec) {
-  return Number(sec).toFixed(2);
-}
-
-function setSelectedFile(file) {
-  if (!file) return;
-  $("file-label").textContent = file.name;
-  $("file-meta").textContent = `${formatBytes(file.size)} · Listo para procesar`;
-}
-
-$("file").addEventListener("change", () => {
-  const file = $("file").files[0];
-  if (file) setSelectedFile(file);
-});
-
-const dropzone = $("dropzone");
-["dragenter", "dragover"].forEach((evt) => {
-  dropzone.addEventListener(evt, (e) => {
-    e.preventDefault();
-    dropzone.classList.add("is-dragover");
-  });
-});
-["dragleave", "drop"].forEach((evt) => {
-  dropzone.addEventListener(evt, (e) => {
-    e.preventDefault();
-    dropzone.classList.remove("is-dragover");
-  });
-});
-dropzone.addEventListener("drop", (e) => {
-  const file = e.dataTransfer?.files?.[0];
-  if (!file) return;
-  const dt = new DataTransfer();
-  dt.items.add(file);
-  $("file").files = dt.files;
-  setSelectedFile(file);
-});
-
-function setLoading(loading) {
-  $("submit-btn").disabled = loading;
-  $("progress-rail").classList.toggle("is-active", loading);
-  if (loading) {
-    $("btn-text").innerHTML = '<span class="spinner" aria-hidden="true"></span>Procesando...';
-  } else {
-    $("btn-text").textContent = "Procesar audio";
-  }
-}
-
-$("form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const file = $("file").files[0];
-  if (!file) return;
-
-  if (file.size > MAX_BYTES) {
-    $("status").className = "status-line is-error";
-    $("status").textContent = `El archivo pesa ${formatBytes(file.size)} y supera el límite de 200 MB.`;
-    return;
-  }
-
-  $("status").className = "status-line";
-  $("status").textContent = "Decodificando audio a 16 kHz mono y clasificando bloques de 3 s...";
-  $("results").hidden = true;
-  $("empty-state").hidden = true;
-  setLoading(true);
-
-  if (objectUrl) URL.revokeObjectURL(objectUrl);
-  objectUrl = URL.createObjectURL(file);
-  $("player").src = objectUrl;
-
-  try {
-    const res = await fetch("/segment", { method: "POST", body: file });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Error al procesar el archivo.");
-    currentData = data;
-    activeFilter = null;
-    render(data);
-  } catch (err) {
-    $("status").className = "status-line is-error";
-    $("status").textContent = err.message || "No se pudo conectar con el servidor.";
-    $("empty-state").hidden = false;
-  } finally {
-    setLoading(false);
-  }
-});
-
-function render({ duration, segments }) {
-  if (!segments || segments.length === 0) {
-    $("status").className = "status-line";
-    $("status").textContent = `El audio dura ${duration} s; se necesitan al menos 3 s para clasificar un bloque.`;
-    $("results").hidden = true;
-    $("empty-state").hidden = false;
-    return;
-  }
-
-  const covered = segments[segments.length - 1].end_time;
-  const tail = duration - covered;
-  $("status").className = "status-line";
-  $("status").innerHTML =
-    `<span class="num"><strong>Duración total:</strong> ${duration.toFixed(2)} s · <strong>Segmentos:</strong> ${segments.length}</span>` +
-    (tail > 0.01
-      ? `<span class="num">Los últimos ${tail.toFixed(2)} s no completan un bloque de 3 s y quedan sin clasificar.</span>`
-      : `<span>Cobertura completa del audio</span>`);
-
-  renderSummary(segments, covered);
-  renderRuler(duration);
-  renderBar(segments, duration, covered);
-  renderTable(segments);
-
-  $("playhead").classList.add("is-visible");
-  $("playhead").style.left = "0%";
-  $("now-playing").hidden = true;
-  $("results").hidden = false;
-}
-
-function renderSummary(segments, covered) {
-  const totals = { musica: 0, voz: 0, ruido: 0, silencio: 0 };
-  for (const s of segments) {
-    totals[s.label] = (totals[s.label] || 0) + (s.end_time - s.start_time);
-  }
-  const strip = $("summary-strip");
-  strip.innerHTML = "";
-  for (const cat of CATEGORIES) {
-    const sec = totals[cat.key] || 0;
-    const pct = covered > 0 ? (sec / covered) * 100 : 0;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "stat-btn" + (activeFilter === cat.key ? " is-selected" : "");
-    btn.setAttribute("aria-pressed", String(activeFilter === cat.key));
-    btn.innerHTML = `
-      <span class="stat-head">
-        <span class="stat-label"><span class="swatch" style="background:${cat.color}"></span>${cat.label}</span>
-        <span>${activeFilter === cat.key ? "Filtrado" : "Filtrar"}</span>
-      </span>
-      <span class="stat-value num">${pct.toFixed(1)}%<span class="stat-seconds">${sec.toFixed(1)} s</span></span>
-    `;
-    btn.onclick = () => {
-      activeFilter = activeFilter === cat.key ? null : cat.key;
-      renderSummary(currentData.segments, covered);
-      renderBar(currentData.segments, currentData.duration, covered);
-      renderTable(currentData.segments);
-    };
-    strip.appendChild(btn);
-  }
-}
-
-function renderRuler(duration) {
-  const ruler = $("ruler");
-  ruler.innerHTML = "";
-  const ticks = 5;
-  for (let i = 0; i <= ticks; i++) {
-    const span = document.createElement("span");
-    span.textContent = `${((duration * i) / ticks).toFixed(1)} s`;
-    ruler.appendChild(span);
-  }
-}
-
-function renderBar(segments, duration, covered) {
-  const bar = $("bar");
-  bar.innerHTML = "";
-  const totalBase = duration > 0 ? duration : covered;
-
-  for (const s of segments) {
-    const segDur = s.end_time - s.start_time;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "strata-seg" + (activeFilter && activeFilter !== s.label ? " is-dimmed" : "");
-    btn.style.width = `${(segDur / totalBase) * 100}%`;
-    btn.style.background = COLOR_MAP[s.label] || "#94A3B8";
-    const desc = `${formatTime(s.start_time)}–${formatTime(s.end_time)} s · ${LABEL_MAP[s.label] || s.label} (${segDur.toFixed(1)} s)`;
-    btn.title = desc;
-    btn.setAttribute("aria-label", `Reproducir ${desc}`);
-    btn.onmouseenter = () => { $("hover-readout").textContent = desc; };
-    btn.onmouseleave = () => { $("hover-readout").textContent = "Hacé clic en un bloque para reproducir"; };
-    btn.onclick = () => seekAndPlay(s.start_time);
-    bar.appendChild(btn);
-  }
-
-  if (duration > covered + 0.01) {
-    const tail = document.createElement("div");
-    tail.className = "strata-tail";
-    tail.style.width = `${((duration - covered) / totalBase) * 100}%`;
-    tail.title = `${formatTime(covered)}–${formatTime(duration)} s · Sin clasificar (< 3 s)`;
-    bar.appendChild(tail);
-  }
-}
-
-function renderTable(segments) {
-  const tbody = $("table").querySelector("tbody");
-  tbody.innerHTML = "";
-  const visible = activeFilter ? segments.filter((s) => s.label === activeFilter) : segments;
-
-  $("clear-filter").hidden = !activeFilter;
-  $("table-heading").textContent = activeFilter
-    ? `Intervalos de ${LABEL_MAP[activeFilter]} (${visible.length})`
-    : `Intervalos detectados (${visible.length})`;
-
-  for (const s of visible) {
-    const dur = s.end_time - s.start_time;
-    const row = tbody.insertRow();
-    row.dataset.start = s.start_time;
-    row.dataset.end = s.end_time;
-    row.tabIndex = 0;
-
-    row.insertCell().className = "num";
-    row.cells[0].textContent = formatTime(s.start_time);
-
-    row.insertCell().className = "num";
-    row.cells[1].textContent = formatTime(s.end_time);
-
-    row.insertCell().className = "num";
-    row.cells[2].textContent = `${dur.toFixed(1)} s`;
-
-    const catCell = row.insertCell();
-    catCell.innerHTML = `<span class="cat-cell"><span class="swatch" style="background:${COLOR_MAP[s.label]}"></span>${LABEL_MAP[s.label] || s.label}</span>`;
-
-    const actionCell = row.insertCell();
-    actionCell.className = "row-play-hint";
-    actionCell.textContent = "Reproducir";
-
-    row.onclick = () => seekAndPlay(s.start_time);
-    row.onkeydown = (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        seekAndPlay(s.start_time);
-      }
-    };
-  }
-}
-
-$("clear-filter").addEventListener("click", () => {
-  if (!currentData) return;
-  activeFilter = null;
-  const covered = currentData.segments[currentData.segments.length - 1].end_time;
-  renderSummary(currentData.segments, covered);
-  renderBar(currentData.segments, currentData.duration, covered);
-  renderTable(currentData.segments);
-});
-
-function seekAndPlay(timeSec) {
-  const player = $("player");
-  player.currentTime = timeSec;
-  player.play().catch(() => {});
-}
-
-function updatePlaybackSync() {
-  if (!currentData) return;
-  const player = $("player");
-  const t = player.currentTime || 0;
-  const dur = currentData.duration || player.duration || 1;
-  const pct = Math.min(100, Math.max(0, (t / dur) * 100));
-  $("playhead").style.left = `${pct}%`;
-
-  const activeSeg = currentData.segments.find((s) => t >= s.start_time && t < s.end_time);
-  if (activeSeg) {
-    $("now-playing").hidden = false;
-    $("now-swatch").style.background = COLOR_MAP[activeSeg.label];
-    $("now-text").textContent = `${LABEL_MAP[activeSeg.label] || activeSeg.label} (${formatTime(activeSeg.start_time)}–${formatTime(activeSeg.end_time)} s)`;
-  } else {
-    $("now-playing").hidden = true;
-  }
-
-  const rows = $("table").querySelectorAll("tbody tr");
-  for (const row of rows) {
-    const start = Number(row.dataset.start);
-    const end = Number(row.dataset.end);
-    row.classList.toggle("is-playing", t >= start && t < end);
-  }
-}
-
-$("player").addEventListener("timeupdate", updatePlaybackSync);
-$("player").addEventListener("seeked", updatePlaybackSync);
-
-function downloadFile(content, filename, mime) {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-$("export-json").addEventListener("click", () => {
-  if (!currentData) return;
-  downloadFile(JSON.stringify(currentData, null, 2), "segmentacion_audio.json", "application/json");
-});
-
-$("export-csv").addEventListener("click", () => {
-  if (!currentData) return;
-  const lines = ["start_time,end_time,duration,label"];
-  for (const s of currentData.segments) {
-    lines.push(`${s.start_time},${s.end_time},${(s.end_time - s.start_time).toFixed(2)},${s.label}`);
-  }
-  downloadFile(lines.join("\n"), "segmentacion_audio.csv", "text/csv;charset=utf-8");
-});
-</script>
+<script src="/app.js"></script>
 </body>
 </html>

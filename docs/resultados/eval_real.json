@@ -1,0 +1,116 @@
+{
+  "celda_s": 0.5,
+  "n_celdas": 174,
+  "accuracy": 0.6781609195402298,
+  "f1_macro": 0.5755461014081704,
+  "accuracy_sin_suavizado": 0.6551724137931034,
+  "accuracy_anterior": 0.3793103448275862,
+  "f1_macro_anterior": 0.2927981432926996,
+  "confusion": [
+    [
+      25,
+      16,
+      0,
+      0
+    ],
+    [
+      0,
+      50,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      43,
+      0
+    ],
+    [
+      0,
+      0,
+      40,
+      0
+    ]
+  ],
+  "archivos": [
+    {
+      "archivo": "musica_01.opus",
+      "duracion": 20.29,
+      "clases": [
+        "musica"
+      ],
+      "accuracy": 0.6097560975609756,
+      "accuracy_sin_suavizado": 0.5121951219512195,
+      "accuracy_anterior": 0.2926829268292683,
+      "segmentos": [
+        [
+          0.0,
+          8.0,
+          "voz",
+          0.7856
+        ],
+        [
+          8.0,
+          20.294,
+          "musica",
+          0.7816
+        ]
+      ]
+    },
+    {
+      "archivo": "ruido_01.opus",
+      "duracion": 21.35,
+      "clases": [
+        "ruido"
+      ],
+      "accuracy": 1.0,
+      "accuracy_sin_suavizado": 1.0,
+      "accuracy_anterior": 0.0,
+      "segmentos": [
+        [
+          0.0,
+          21.354,
+          "ruido",
+          0.8956
+        ]
+      ]
+    },
+    {
+      "archivo": "silencio_01.opus",
+      "duracion": 19.81,
+      "clases": [
+        "silencio"
+      ],
+      "accuracy": 0.0,
+      "accuracy_sin_suavizado": 0.0,
+      "accuracy_anterior": 0.15,
+      "segmentos": [
+        [
+          0.0,
+          19.814,
+          "ruido",
+          0.9535
+        ]
+      ]
+    },
+    {
+      "archivo": "voz_01.opus",
+      "duracion": 24.61,
+      "clases": [
+        "voz"
+      ],
+      "accuracy": 1.0,
+      "accuracy_sin_suavizado": 1.0,
+      "accuracy_anterior": 0.96,
+      "segmentos": [
+        [
+          0.0,
+          24.613,
+          "voz",
+          0.9986
+        ]
+      ]
+    }
+  ],
+  "nota": "La version anterior no clasifica la cola de menos de 3 s; esas celdas cuentan como error."
+}

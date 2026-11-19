@@ -1,0 +1,440 @@
+{
+  "n_por_condicion": 1200,
+  "modelo": "Gradient Boosting por histogramas",
+  "snr": {
+    "x": [
+      20,
+      10,
+      5,
+      0,
+      -5
+    ],
+    "etiquetas": [
+      "limpio",
+      "20 dB",
+      "10 dB",
+      "5 dB",
+      "0 dB",
+      "-5 dB"
+    ],
+    "nuevo": [
+      0.965,
+      0.955,
+      0.9283333333333333,
+      0.8233333333333334,
+      0.6666666666666666,
+      0.46166666666666667
+    ],
+    "anterior": [
+      0.95,
+      0.8933333333333333,
+      0.7316666666666667,
+      0.605,
+      0.5383333333333333,
+      0.45166666666666666
+    ],
+    "detalle": {
+      "limpio": {
+        "nuevo": 0.965,
+        "anterior": 0.95,
+        "nuevo_por_clase": {
+          "musica": 0.9566666666666667,
+          "voz": 0.9733333333333334
+        },
+        "anterior_por_clase": {
+          "musica": 0.9266666666666666,
+          "voz": 0.9733333333333334
+        }
+      },
+      "20 dB": {
+        "nuevo": 0.955,
+        "anterior": 0.8933333333333333,
+        "nuevo_por_clase": {
+          "musica": 0.95,
+          "voz": 0.96
+        },
+        "anterior_por_clase": {
+          "musica": 0.9033333333333333,
+          "voz": 0.8833333333333333
+        }
+      },
+      "10 dB": {
+        "nuevo": 0.9283333333333333,
+        "anterior": 0.7316666666666667,
+        "nuevo_por_clase": {
+          "musica": 0.94,
+          "voz": 0.9166666666666666
+        },
+        "anterior_por_clase": {
+          "musica": 0.8966666666666666,
+          "voz": 0.5666666666666667
+        }
+      },
+      "5 dB": {
+        "nuevo": 0.8233333333333334,
+        "anterior": 0.605,
+        "nuevo_por_clase": {
+          "musica": 0.9033333333333333,
+          "voz": 0.7433333333333333
+        },
+        "anterior_por_clase": {
+          "musica": 0.87,
+          "voz": 0.34
+        }
+      },
+      "0 dB": {
+        "nuevo": 0.6666666666666666,
+        "anterior": 0.5383333333333333,
+        "nuevo_por_clase": {
+          "musica": 0.8,
+          "voz": 0.5333333333333333
+        },
+        "anterior_por_clase": {
+          "musica": 0.8266666666666667,
+          "voz": 0.25
+        }
+      },
+      "-5 dB": {
+        "nuevo": 0.46166666666666667,
+        "anterior": 0.45166666666666666,
+        "nuevo_por_clase": {
+          "musica": 0.58,
+          "voz": 0.3433333333333333
+        },
+        "anterior_por_clase": {
+          "musica": 0.69,
+          "voz": 0.21333333333333335
+        }
+      }
+    },
+    "nuevo_curva": [
+      0.955,
+      0.9283333333333333,
+      0.8233333333333334,
+      0.6666666666666666,
+      0.46166666666666667
+    ],
+    "anterior_curva": [
+      0.8933333333333333,
+      0.7316666666666667,
+      0.605,
+      0.5383333333333333,
+      0.45166666666666666
+    ]
+  },
+  "fs": {
+    "etiquetas": [
+      "16000 (original)",
+      "44100 -> 16000",
+      "11025",
+      "8000",
+      "6000",
+      "8000 sin anti-alias"
+    ],
+    "nuevo": [
+      0.9608333333333333,
+      0.96,
+      0.9341666666666667,
+      0.905,
+      0.8708333333333333,
+      0.8908333333333334
+    ],
+    "anterior": [
+      0.8725,
+      0.8708333333333333,
+      0.7658333333333334,
+      0.6541666666666667,
+      0.6441666666666667,
+      0.6733333333333333
+    ],
+    "detalle": {
+      "16000 (original)": {
+        "nuevo": 0.9608333333333333,
+        "anterior": 0.8725,
+        "nuevo_por_clase": {
+          "musica": 0.9566666666666667,
+          "voz": 0.9733333333333334,
+          "ruido": 0.9266666666666666,
+          "silencio": 0.9866666666666667
+        },
+        "anterior_por_clase": {
+          "musica": 0.9266666666666666,
+          "voz": 0.9733333333333334,
+          "ruido": 0.7833333333333333,
+          "silencio": 0.8066666666666666
+        }
+      },
+      "44100 -> 16000": {
+        "nuevo": 0.96,
+        "anterior": 0.8708333333333333,
+        "nuevo_por_clase": {
+          "musica": 0.9633333333333334,
+          "voz": 0.9766666666666667,
+          "ruido": 0.92,
+          "silencio": 0.98
+        },
+        "anterior_por_clase": {
+          "musica": 0.92,
+          "voz": 0.98,
+          "ruido": 0.7633333333333333,
+          "silencio": 0.82
+        }
+      },
+      "11025": {
+        "nuevo": 0.9341666666666667,
+        "anterior": 0.7658333333333334,
+        "nuevo_por_clase": {
+          "musica": 0.91,
+          "voz": 0.9433333333333334,
+          "ruido": 0.9166666666666666,
+          "silencio": 0.9666666666666667
+        },
+        "anterior_por_clase": {
+          "musica": 0.8133333333333334,
+          "voz": 0.9833333333333333,
+          "ruido": 0.44666666666666666,
+          "silencio": 0.82
+        }
+      },
+      "8000": {
+        "nuevo": 0.905,
+        "anterior": 0.6541666666666667,
+        "nuevo_por_clase": {
+          "musica": 0.9066666666666666,
+          "voz": 0.9666666666666667,
+          "ruido": 0.8733333333333333,
+          "silencio": 0.8733333333333333
+        },
+        "anterior_por_clase": {
+          "musica": 0.6,
+          "voz": 0.9966666666666667,
+          "ruido": 0.29,
+          "silencio": 0.73
+        }
+      },
+      "6000": {
+        "nuevo": 0.8708333333333333,
+        "anterior": 0.6441666666666667,
+        "nuevo_por_clase": {
+          "musica": 0.8633333333333333,
+          "voz": 0.7666666666666667,
+          "ruido": 0.9033333333333333,
+          "silencio": 0.95
+        },
+        "anterior_por_clase": {
+          "musica": 0.6166666666666667,
+          "voz": 0.9766666666666667,
+          "ruido": 0.28,
+          "silencio": 0.7033333333333334
+        }
+      },
+      "8000 sin anti-alias": {
+        "nuevo": 0.8908333333333334,
+        "anterior": 0.6733333333333333,
+        "nuevo_por_clase": {
+          "musica": 0.8533333333333334,
+          "voz": 0.97,
+          "ruido": 0.8733333333333333,
+          "silencio": 0.8666666666666667
+        },
+        "anterior_por_clase": {
+          "musica": 0.6133333333333333,
+          "voz": 0.9933333333333333,
+          "ruido": 0.3333333333333333,
+          "silencio": 0.7533333333333333
+        }
+      }
+    }
+  },
+  "codec": {
+    "etiquetas": [
+      "sin codec",
+      "mp3_128k",
+      "mp3_32k",
+      "aac_32k",
+      "opus_16k",
+      "amr_nb",
+      "celular completo"
+    ],
+    "nuevo": [
+      0.9608333333333333,
+      0.9616666666666667,
+      0.9591666666666666,
+      0.9541666666666667,
+      0.9483333333333334,
+      0.8708333333333333,
+      0.9391666666666667
+    ],
+    "anterior": [
+      0.8725,
+      0.8683333333333333,
+      0.8666666666666667,
+      0.8741666666666666,
+      0.8733333333333333,
+      0.6633333333333333,
+      0.7416666666666667
+    ],
+    "detalle": {
+      "sin codec": {
+        "nuevo": 0.9608333333333333,
+        "anterior": 0.8725,
+        "nuevo_por_clase": {
+          "musica": 0.9566666666666667,
+          "voz": 0.9733333333333334,
+          "ruido": 0.9266666666666666,
+          "silencio": 0.9866666666666667
+        },
+        "anterior_por_clase": {
+          "musica": 0.9266666666666666,
+          "voz": 0.9733333333333334,
+          "ruido": 0.7833333333333333,
+          "silencio": 0.8066666666666666
+        }
+      },
+      "mp3_128k": {
+        "nuevo": 0.9616666666666667,
+        "anterior": 0.8683333333333333,
+        "nuevo_por_clase": {
+          "musica": 0.9633333333333334,
+          "voz": 0.97,
+          "ruido": 0.94,
+          "silencio": 0.9733333333333334
+        },
+        "anterior_por_clase": {
+          "musica": 0.9233333333333333,
+          "voz": 0.9833333333333333,
+          "ruido": 0.7433333333333333,
+          "silencio": 0.8233333333333334
+        }
+      },
+      "mp3_32k": {
+        "nuevo": 0.9591666666666666,
+        "anterior": 0.8666666666666667,
+        "nuevo_por_clase": {
+          "musica": 0.96,
+          "voz": 0.9766666666666667,
+          "ruido": 0.93,
+          "silencio": 0.97
+        },
+        "anterior_por_clase": {
+          "musica": 0.9266666666666666,
+          "voz": 0.9733333333333334,
+          "ruido": 0.7366666666666667,
+          "silencio": 0.83
+        }
+      },
+      "aac_32k": {
+        "nuevo": 0.9541666666666667,
+        "anterior": 0.8741666666666666,
+        "nuevo_por_clase": {
+          "musica": 0.9566666666666667,
+          "voz": 0.9566666666666667,
+          "ruido": 0.9266666666666666,
+          "silencio": 0.9766666666666667
+        },
+        "anterior_por_clase": {
+          "musica": 0.93,
+          "voz": 0.9666666666666667,
+          "ruido": 0.79,
+          "silencio": 0.81
+        }
+      },
+      "opus_16k": {
+        "nuevo": 0.9483333333333334,
+        "anterior": 0.8733333333333333,
+        "nuevo_por_clase": {
+          "musica": 0.9466666666666667,
+          "voz": 0.9733333333333334,
+          "ruido": 0.94,
+          "silencio": 0.9333333333333333
+        },
+        "anterior_por_clase": {
+          "musica": 0.9366666666666666,
+          "voz": 0.98,
+          "ruido": 0.76,
+          "silencio": 0.8166666666666667
+        }
+      },
+      "amr_nb": {
+        "nuevo": 0.8708333333333333,
+        "anterior": 0.6633333333333333,
+        "nuevo_por_clase": {
+          "musica": 0.8033333333333333,
+          "voz": 0.9866666666666667,
+          "ruido": 0.8466666666666667,
+          "silencio": 0.8466666666666667
+        },
+        "anterior_por_clase": {
+          "musica": 0.5533333333333333,
+          "voz": 0.9933333333333333,
+          "ruido": 0.23666666666666666,
+          "silencio": 0.87
+        }
+      },
+      "celular completo": {
+        "nuevo": 0.9391666666666667,
+        "anterior": 0.7416666666666667,
+        "nuevo_por_clase": {
+          "musica": 0.9033333333333333,
+          "voz": 0.9733333333333334,
+          "ruido": 0.92,
+          "silencio": 0.96
+        },
+        "anterior_por_clase": {
+          "musica": 0.6766666666666666,
+          "voz": 0.93,
+          "ruido": 0.44,
+          "silencio": 0.92
+        }
+      }
+    }
+  },
+  "segmentacion": {
+    "n_secuencias": 30,
+    "variantes": {
+      "ninguno": {
+        "accuracy_celdas": 0.870224797713165,
+        "segmentos_predichos": 282,
+        "segmentos_reales": 244,
+        "error_borde_mediana_s": 0.8635385161743763,
+        "error_borde_medio_s": 0.9819459131471929
+      },
+      "mediana": {
+        "accuracy_celdas": 0.8736331968791169,
+        "segmentos_predichos": 265,
+        "segmentos_reales": 244,
+        "error_borde_mediana_s": 0.8876749810124913,
+        "error_borde_medio_s": 0.9866188103434547
+      },
+      "viterbi lambda=2": {
+        "accuracy_celdas": 0.8758728381519914,
+        "segmentos_predichos": 240,
+        "segmentos_reales": 244,
+        "error_borde_mediana_s": 0.9108898741284814,
+        "error_borde_medio_s": 1.204258473161455
+      },
+      "viterbi lambda=4": {
+        "accuracy_celdas": 0.8734066042583092,
+        "segmentos_predichos": 218,
+        "segmentos_reales": 244,
+        "error_borde_mediana_s": 0.9504068345349763,
+        "error_borde_medio_s": 1.6393758750550376
+      },
+      "viterbi lambda=6": {
+        "accuracy_celdas": 0.8717719437324746,
+        "segmentos_predichos": 212,
+        "segmentos_reales": 244,
+        "error_borde_mediana_s": 0.9565246075999374,
+        "error_borde_medio_s": 1.7295092163075925
+      },
+      "viterbi lambda=10": {
+        "accuracy_celdas": 0.8665493114265089,
+        "segmentos_predichos": 206,
+        "segmentos_reales": 244,
+        "error_borde_mediana_s": 0.9837189329068003,
+        "error_borde_medio_s": 1.9112213076240483
+      }
+    }
+  },
+  "segundos": 614.3
+}

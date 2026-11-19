@@ -4,21 +4,78 @@ title: "Guia de Uso del Sistema de Segmentacion y Clasificacion de Audio"
 
 # Guia de Uso
 
-## 1. Instalar las dependencias en el entorno virtual
+Todos los comandos se corren desde la raiz del proyecto.
 
-Desde la raiz del proyecto (`/home/iago/Facultad/Muestreo`), instala los paquetes requeridos dentro del entorno virtual `.venv`:
+## 1. Instalar las dependencias
 
 ```bash
+python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
+`imageio-ffmpeg` trae un binario de `ffmpeg`, asi que no hace falta instalarlo aparte; si hay uno en el sistema se usa ese. Se necesita para leer formatos comprimidos (mp3, m4a, ogg, amr) y para la simulacion de codecs.
+
 ---
 
-## 2. Ubicar el dataset MUSAN (Opcional)
+## 2. Usar el modelo ya entrenado
 
-Por defecto, `src/config.py` busca el dataset en el directorio `data/musan/`, aunque tambien se puede especificar cualquier otra ruta por linea de comandos.
+El repositorio incluye `models/modelo.joblib` y sus metricas, asi que la interfaz y la segmentacion por linea de comandos funcionan sin descargar nada.
 
-La estructura esperada dentro de la carpeta del dataset es la original de MUSAN (los archivos `.wav` pueden estar anidados en subdirectorios internos, ya que `collect_wav_files` realiza una busqueda recursiva):
+### 2.1. Interfaz web
+
+```bash
+.venv/bin/python -m src.server            # http://127.0.0.1:8000
+.venv/bin/python -m src.server --port 9000
+```
+
+Funciona sin conexion a internet. Pestanas:
+
+- **Archivo:** subir un audio o video (cualquier formato y frecuencia, hasta 200 MB). Se puede elegir salto de ventana, tipo de suavizado, penalidad de cambio y duracion minima. Clic en un segmento: lo reproduce y abre el panel con espectrograma, curvas, probabilidades, PCA con vecinos y rasgos que mas pesaron. Exporta JSON, CSV y SRT.
+- **En vivo:** clasificacion con el microfono. El navegador pide permiso; en `127.0.0.1` funciona sin HTTPS.
+- **Acondicionamiento:** Bode, polos y ceros, retardo de grupo y A/B de la ultima senal procesada antes y despues del filtro.
+- **Aliasing:** tono o barrido llevado de 48 kHz a 6–16 kHz con y sin anti-alias, con audio.
+- **Metricas:** validacion cruzada, prueba final, ablation, robustez y grabaciones reales.
+
+### 2.2. Linea de comandos
+
+```bash
+.venv/bin/python -m src.segmenter grabacion.m4a
+.venv/bin/python -m src.segmenter grabacion.wav --suavizado mediana --salto 1
+.venv/bin/python -m src.segmenter grabacion.wav --penalidad 6 --duracion-minima 3
+```
+
+Salida real para una secuencia armada con audio del pliegue de prueba, convertida a m4a a 44.1 kHz (los tramos reales eran silencio 0–10.3 s, ruido 10.3–23.3 s, voz 23.3–29.4 s, ruido 29.4–37.1 s, silencio 37.1–41.8 s, ruido 41.8–46.2 s y musica 46.2–50.6 s):
+
+```text
+Duracion: 50.59 s | suavizado: viterbi
+Inicio (s) | Fin (s)    | Categoria | Confianza
+--------------------------------------------------
+      0.00 |       9.00 | silencio  | 0.97
+      9.00 |      22.50 | ruido     | 0.84
+     22.50 |      29.00 | voz       | 0.86
+     29.00 |      36.00 | ruido     | 0.89
+     36.00 |      43.00 | silencio  | 0.87
+     43.00 |      46.00 | ruido     | 0.74
+     46.00 |      50.59 | musica    | 0.93
+```
+
+Los bordes quedan dentro de 1.3 s de los reales: es la resolucion que permite una ventana de 3 s. Ojo: las grabaciones de celular con control automatico de ganancia (por ejemplo notas de voz de mensajeria) suben el silencio de la pieza a unos −41 dBFS y el sistema lo marca como ruido; ver `explicacion.md`, seccion 9.4.
+
+---
+
+## 3. Regenerar caracteristicas y reentrenar
+
+### 3.1. Dataset MUSAN
+
+Descargar MUSAN (11 GB) de https://www.openslr.org/17/ y descomprimirlo en `data/`:
+
+```bash
+mkdir -p data && cd data
+curl -L -O https://www.openslr.org/resources/17/musan.tar.gz
+tar -xzf musan.tar.gz && cd ..
+```
+
+Estructura esperada (la busqueda de `.wav` es recursiva; tambien se aceptan carpetas `musica/`, `voz/`, `ruido/`):
 
 ```text
 data/musan/
@@ -27,101 +84,55 @@ data/musan/
 └── noise/
 ```
 
-El sistema tambien reconoce los nombres de carpetas en espanol (`musica/`, `voz/`, `ruido/`).
-
----
-
-## 3. Caracteristicas precalculadas (`features/musan_features.npz`)
-
-El repositorio incluye `features/musan_features.npz` (~24 MB) con los vectores de 18 caracteristicas ya extraidos de MUSAN (particiones train/test, etiquetas, nombres de caracteristicas y parametros usados). Gracias a esto **no hace falta descargar el dataset de audio** para entrenar: `src/train.py` usa el `.npz` automaticamente si existe.
-
-Para regenerarlo desde los `.wav` (requiere `data/musan/`, tarda unos 4 minutos):
+### 3.2. Extraer caracteristicas (`src/build_features.py`)
 
 ```bash
-.venv/bin/python -m src.build_features
+.venv/bin/python -m src.build_features            # usa todos los nucleos menos uno
+.venv/bin/python -m src.build_features --workers 4
 ```
 
-Contenido del archivo:
+Asigna cada archivo a uno de 5 pliegues, acondiciona y extrae ventanas de 3 s, genera silencio sintetico y augmentation por pliegue, y guarda:
 
-```python
-import numpy as np
-d = np.load("features/musan_features.npz")
-d["X_train"], d["X_test"], d["y_train"], d["y_test"], d["feature_names"], d["categories"]
-```
+- `features/musan_features.npz`: `X` (ventanas x 64), `y`, `fold`, `group`, `kind` (tipo de muestra) y los nombres de caracteristicas.
+- `data/banco_prueba.npz`: recortes crudos del pliegue de prueba para las curvas de robustez (no se versiona).
 
----
-
-## 4. Entrenar y evaluar los modelos (`src/train.py`)
-
-Para entrenar (usa `features/musan_features.npz` si existe; si no, extrae desde `data/musan`):
+### 3.3. Entrenar (`src/train.py`)
 
 ```bash
 .venv/bin/python -m src.train
+.venv/bin/python -m src.train --modelos svm,rf,gb --sin-ablation   # mas rapido
 ```
 
-Para indicar una ruta personalizada al dataset o limitar la cantidad maxima de segmentos de 3 segundos por categoria (por ejemplo, `500` por clase para una ejecucion rapida):
+Compara los cinco clasificadores en validacion cruzada (pliegues 0–3), elige por F1 macro, hace la ablation de grupos de caracteristicas, evalua una vez en el pliegue 4 y guarda:
 
-```bash
-.venv/bin/python -m src.train --data-dir /ruta/a/musan --max-segments 500
-```
-
-Para forzar la extraccion desde el audio ignorando el `.npz`, agrega `--from-audio`. (`--max-segments` solo aplica al extraer desde audio.)
-
-Al extraer desde audio, el pipeline realiza automaticamente las siguientes etapas:
-
-1. Separa los archivos `.wav` en conjuntos de entrenamiento ($80\%$) y prueba ($20\%$) a nivel de archivo para evitar data leakage.
-2. Genera la cuarta categoria (`silencio`) de forma independiente para cada particion combinando tramas de voz de baja energia y segmentos de ruido escalados entre `0.001` y `0.01`.
-3. Extrae los vectores de 18 caracteristicas temporales y espectrales por cada segmento de 3 segundos.
-4. Ajusta el `StandardScaler` unicamente sobre la particion de entrenamiento y entrena los modelos `KNeighborsClassifier` y `MLPClassifier`.
-5. Muestra en consola el `Accuracy`, `F1 Macro` y el reporte de clasificacion detallado por categoria.
-6. Persiste los artefactos resultantes dentro del directorio `models/`:
-    - `models/scaler.joblib`
-    - `models/knn_model.joblib`
-    - `models/mlp_model.joblib`
-    - `models/best_model.joblib`
+- `models/modelo.joblib`: modelo con su escalado, PCA y muestra de entrenamiento para el panel *por que*.
+- `models/metricas.json`: todas las metricas.
+- `docs/figuras/confusion_*.png`, `comparacion_modelos.png`, `ablation.png`.
 
 ---
 
-## 5. Probar la segmentacion sobre un archivo `.wav` (`src/segmenter.py`)
-
-Una vez entrenados y persistidos los modelos, se puede segmentar cualquier archivo `.wav` mono a $16\text{ kHz}$ de duracion arbitraria desde la terminal:
+## 4. Evaluacion
 
 ```bash
-.venv/bin/python -m src.segmenter /ruta/al/archivo_prueba.wav
+.venv/bin/python -m scripts.eval_robustness    # SNR, frecuencia de muestreo, codecs y segmentacion
+.venv/bin/python -m scripts.eval_real          # grabaciones propias en data/real/
 ```
 
-La salida mostrara la prediccion para cada bloque consecutivo de 3 segundos:
+Para las grabaciones propias, ver `data/real/LEEME.md` (que grabar y como etiquetar).
 
-```text
-Inicio (s) | Fin (s)    | Categoria
---------------------------------------
-      0.00 |       3.00 | silencio
-      3.00 |       6.00 | voz
-      6.00 |       9.00 | voz
-      9.00 |      12.00 | musica
-```
-
-Para fusionar bloques consecutivos que tengan la misma categoria predicha en intervalos continuos, agrega el argumento `--merge`:
+## 5. Figuras de teoria
 
 ```bash
-.venv/bin/python -m src.segmenter /ruta/al/archivo_prueba.wav --merge
+.venv/bin/python -m scripts.filter_design      # Bode, polos y ceros, retardo de grupo, aliasing
+.venv/bin/python -m scripts.leakage_demo       # fuga espectral rectangular contra Hann
 ```
 
-Para utilizar un modelo especifico (`knn_model.joblib` o `mlp_model.joblib`) en lugar de `best_model.joblib`:
+Quedan en `docs/figuras/`.
+
+## 6. Tests
 
 ```bash
-.venv/bin/python -m src.segmenter /ruta/al/archivo_prueba.wav --model-path models/knn_model.joblib
+.venv/bin/python -m pytest -q
 ```
 
----
-
-## 6. Frontend web (`src/server.py`)
-
-Requiere `ffmpeg` instalado en el sistema; con el se aceptan wav, mp3, ogg, flac, m4a, opus y cualquier frecuencia de muestreo (se convierte a 16 kHz mono antes de clasificar).
-
-```bash
-.venv/bin/python -m src.server            # http://127.0.0.1:8000
-.venv/bin/python -m src.server --port 9000
-```
-
-En la pagina se sube el archivo y se muestra una barra de colores y una tabla con los intervalos ("de 0 s a 9 s: musica"). Al hacer clic en una fila, el reproductor salta a ese instante. Los ultimos segundos que no completan un bloque de 3 s no se clasifican.
+Cubren: notch con menos de −40 dB en 50 Hz, banda de paso plana, estabilidad, fase nula de filtfilt, equivalencia entre filtrado causal doble y offline, anti-alias, remuestreo por bloques, FFT propia contra `np.fft`, COLA, banco mel, DCT, conteo de frames, equivalencia entrenamiento/inferencia, Viterbi, mediana, duracion minima y cobertura de la cola.

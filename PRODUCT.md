@@ -8,34 +8,36 @@ web
 
 ## Users
 
-Estudiantes, docentes y evaluadores en el contexto de la materia **Muestreo** (proyecto académico de segmentación automática de audio), que suben grabaciones para demostrar, inspeccionar y validar cómo el modelo clasifica distintos tipos de señal en el tiempo.
+Estudiantes, docentes y evaluadores de la materia **Muestreo y Procesamiento de Señales**, que usan la herramienta para demostrar, inspeccionar y defender cómo el sistema segmenta distintos tipos de señal en el tiempo, y para mostrar en vivo las decisiones de diseño (filtros, muestreo, características).
 
 ## Product Purpose
 
-Permitir subir cualquier archivo de audio (o video con pista de audio) y visualizar de forma inmediata y clara su segmentación automática en bloques de 3 segundos clasificados en cuatro categorías: **música**, **voz**, **ruido** y **silencio**, permitiendo reproducir y saltar a cada segmento detectado.
+Subir cualquier archivo de audio o video, o hablarle al micrófono, y ver su segmentación en **música**, **voz**, **ruido** y **silencio** con resolución de 0,5 s; escuchar cada segmento y entender por qué se clasificó así. Además, mostrar con datos del propio sistema el diseño del acondicionamiento, el efecto del aliasing y las métricas de evaluación.
 
 ## Positioning
 
-Interfaz web liviana conectada directamente al servidor local de inferencia (`src/server.py`), que decodifica múltiples formatos vía `ffmpeg` a 16 kHz mono, extrae características espectrales/temporales y muestra la línea de tiempo y tabla de intervalos devueltos por el modelo entrenado.
+Interfaz web liviana servida por `src/server.py` (biblioteca estándar de Python), sin dependencias de internet. ffmpeg solo decodifica; el remuestreo, el filtrado, las características y la segmentación son del proyecto.
 
 ## Operating Context
 
-- Ejecución local mediante `python -m src.server` (por defecto en `http://127.0.0.1:8000`).
-- Uso en presentaciones en vivo, pruebas de laboratorio y evaluación de muestras de audio variadas (podcast, música, grabaciones con ruido ambiente, silencios).
-- El servidor actual expone `GET /` (sirviendo `web/index.html`) y `POST /segment` (recibe el archivo en crudo y devuelve `{ duration, segments: [{ start_time, end_time, label }] }`), con límite de 200 MB.
+- Ejecución local con `python -m src.server` (por defecto `http://127.0.0.1:8000`).
+- Uso en la defensa (8 minutos, proyector), en pruebas de laboratorio y con grabaciones de celular.
+- Rutas: `GET /` y estáticos; `POST /api/segmentar`; `GET /api/explicar`, `/api/audio`, `/api/filtros`, `/api/aliasing`, `/api/aliasing.wav`, `/api/metricas`, `/api/estado`; `POST /api/vivo` y `/api/vivo/fin`.
 
 ## Capabilities and Constraints
 
-- Formatos soportados: `audio/*, video/*` decodificados por `ffmpeg` en el backend (wav, mp3, ogg, flac, m4a, opus, etc.).
-- Granularidad fija de clasificación: bloques de 3 segundos; los segundos finales que no completan un bloque de 3 s quedan sin clasificar y se informa al usuario.
-- Categorías fijas del modelo: `musica`, `voz`, `ruido`, `silencio`.
-- Tamaño máximo de archivo: 200 MB.
-- Interacción clave: carga de archivo, procesamiento con feedback de estado/error, reproducción de audio integrada y salto instantáneo al hacer clic en un segmento.
-- Se permite sumar librerías si aportan valor, manteniendo compatibilidad directa con el servidor Python existente.
+- Formatos: cualquiera que lea ffmpeg (wav, mp3, m4a, ogg, flac, opus, amr, video con audio), cualquier frecuencia de muestreo. Máximo 200 MB.
+- Ventana de clasificación de 3 s con salto configurable (0,25 / 0,5 / 1 / 3 s); la cola final se clasifica con una ventana alineada al final.
+- Suavizado configurable: Viterbi (penalidad en nats), mediana o ninguno; duración mínima de segmento.
+- Panel por segmento: forma de onda, espectrograma acondicionado, curvas de RMS, ZCR, centroide y planitud, probabilidades, PCA 2D con vecinos y rasgos determinantes.
+- Modo en vivo: micrófono sin procesamiento del navegador, espectrograma en tiempo real y etiqueta cada 1 s con filtrado HMM.
+- Exportación JSON, CSV y SRT.
+- Categorías fijas: `musica`, `voz`, `ruido`, `silencio`.
 
 ## Product Principles
 
-1. **Claridad inmediata de la señal**: la relación entre el audio en el tiempo, las categorías detectadas y los intervalos exactos debe leerse de un vistazo.
-2. **Precisión académica sin ruido visual**: presentar métricas, duraciones y etiquetas con rigor técnico, sin adornos que distraigan de los resultados del modelo.
-3. **Feedback honesto en cada estado**: comunicar claramente la carga, el procesamiento en curso, bloques no clasificados al final y errores de decodificación o tamaño.
-4. **Exploración directa audio-segmento**: escuchar y verificar cualquier segmento clasificado debe tomar un solo clic.
+1. **Claridad inmediata de la señal:** la relación entre audio, categorías e intervalos se lee de un vistazo.
+2. **Precisión académica sin ruido visual:** cada número que se muestra sale del sistema (parámetros, métricas medidas), con unidades.
+3. **Feedback honesto:** estados de carga, errores de decodificación, confianza por segmento y aviso si no hay modelo.
+4. **Explicar, no solo mostrar:** cada decisión del sistema (filtro, ventana, clase) se puede inspeccionar desde la interfaz.
+5. **Un clic para verificar:** escuchar cualquier segmento o comparar antes/después del filtro toma un clic.

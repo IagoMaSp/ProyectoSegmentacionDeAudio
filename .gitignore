@@ -1,3 +1,12 @@
-data/
+data/*
+!data/real/
+data/real/*
+!data/real/LEEME.md
+!data/real/etiquetas_ejemplo.csv
 __pycache__/
 *.pyc
+.venv/
+.pytest_cache/
+.playwright-mcp/
+.claude/settings.local.json
+docs/resultados/log_*.txt
