@@ -218,6 +218,63 @@ def api_audio(query: dict) -> bytes:
     return write_wav_bytes(x, C.SAMPLE_RATE)
 
 
+def _psd_log(x: np.ndarray, fs: int, f_grid: np.ndarray) -> np.ndarray:
+    """PSD de Welch [dB] llevada a una grilla logaritmica.
+
+    Ventanas de 8192 muestras (0,5 s, resolucion de 1,95 Hz) para que la muesca de
+    50 Hz se vea. En graves la grilla es mas fina que la resolucion y se interpola;
+    en agudos cada punto promedia (en potencia) los bins de Welch que caen en su banda.
+    """
+    nper = min(8192, x.size)
+    f, p = sps.welch(x, fs=fs, window="hann", nperseg=nper, noverlap=nper // 2)
+    edges = np.sqrt(f_grid[:-1] * f_grid[1:])
+    edges = np.concatenate([[f_grid[0]], edges, [f_grid[-1]]])
+    out = np.interp(f_grid, f, p)
+    idx = np.searchsorted(f, edges)
+    for i in range(f_grid.size):
+        a, b = idx[i], idx[i + 1]
+        if b - a >= 2:
+            out[i] = p[a:b].mean()
+    return 10 * np.log10(np.maximum(out, 1e-20))
+
+
+def api_espectro(query: dict) -> dict:
+    """Espectro de la ultima senal procesada antes (A) y despues (B) del acondicionamiento."""
+    aid = _q(query, "id", "", str)
+    with LOCK:
+        a = ANALYSES.get(aid)
+    if a is None:
+        raise KeyError("Analisis no encontrado.")
+    fs = C.SAMPLE_RATE
+    x, y = a["x"], a["y"]
+    if x.size < C.N_WIN:
+        raise ValueError("La senal es demasiado corta para estimar el espectro.")
+    f_grid = np.geomspace(5, fs / 2 * 0.999, 600)
+    db_x, db_y = _psd_log(x, fs, f_grid), _psd_log(y, fs, f_grid)
+
+    # resumen numerico con la PSD lineal completa
+    f, px = sps.welch(x, fs=fs, window="hann", nperseg=min(8192, x.size))
+    _, py = sps.welch(y, fs=fs, window="hann", nperseg=min(8192, y.size))
+    total_x, total_y = px.sum(), py.sum()
+    low = f < C.HP_CUTOFF_HZ
+    hum = (f >= C.NOTCH_FREQS_HZ[0] - 2) & (f <= C.NOTCH_FREQS_HZ[0] + 2)
+    eps = 1e-20
+    return {
+        "f": np.round(f_grid, 3).tolist(),
+        "original_db": np.round(db_x, 2).tolist(),
+        "acondicionado_db": np.round(db_y, 2).tolist(),
+        "resumen": {
+            "energia_quitada_pct": round(float(100 * (1 - total_y / max(total_x, eps))), 2),
+            "graves_antes_pct": round(float(100 * px[low].sum() / max(total_x, eps)), 2),
+            "graves_despues_pct": round(float(100 * py[low].sum() / max(total_y, eps)), 2),
+            "red_antes_db": round(float(10 * np.log10(px[hum].max() + eps)), 1),
+            "red_despues_db": round(float(10 * np.log10(py[hum].max() + eps)), 1),
+            "red_f0": C.NOTCH_FREQS_HZ[0],
+            "hp_fc": C.HP_CUTOFF_HZ,
+        },
+    }
+
+
 def api_filtros() -> dict:
     fs = C.SAMPLE_RATE
     freqs = np.geomspace(5, fs / 2 * 0.999, 600)
@@ -320,7 +377,7 @@ def api_aliasing_wav(query: dict) -> bytes:
 
 def _read_json(path: Path) -> Any:
     try:
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
 
@@ -400,6 +457,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/estado": lambda: self._json(200, api_estado()),
             "/api/explicar": lambda: self._json(200, api_explicar(q)),
             "/api/audio": lambda: self._send(200, api_audio(q), "audio/wav"),
+            "/api/espectro": lambda: self._json(200, api_espectro(q)),
             "/api/filtros": lambda: self._json(200, api_filtros()),
             "/api/aliasing": lambda: self._json(200, api_aliasing(q)),
             "/api/aliasing.wav": lambda: self._send(200, api_aliasing_wav(q), "audio/wav"),

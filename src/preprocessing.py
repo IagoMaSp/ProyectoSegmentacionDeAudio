@@ -74,10 +74,12 @@ def decode_with_ffmpeg(path: str | Path) -> tuple[int, np.ndarray]:
 
 
 def decode_bytes(data: bytes, suffix: str = "") -> tuple[int, np.ndarray]:
-    with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
-        tmp.write(data)
-        tmp.flush()
-        return decode_with_ffmpeg(tmp.name)
+    # Se escribe en un directorio temporal y se cierra el archivo antes de llamar
+    # a ffmpeg: en Windows un NamedTemporaryFile abierto no lo puede leer otro proceso.
+    with tempfile.TemporaryDirectory() as tmp:
+        src = Path(tmp) / f"entrada{suffix}"
+        src.write_bytes(data)
+        return decode_with_ffmpeg(src)
 
 
 def load_audio(path: str | Path, target_sr: int = SAMPLE_RATE) -> np.ndarray:

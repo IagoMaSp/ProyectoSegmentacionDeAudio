@@ -568,7 +568,7 @@ Servidor HTTP de la biblioteca estandar, sin dependencias externas ni recursos d
 - **En vivo:** microfono (sin cancelacion de eco, supresion de ruido ni AGC del navegador), espectrograma en tiempo real y etiqueta cada 1 s con filtrado HMM. Transporte por POST de bloques de ~250 ms; no hace falta WebSocket.
 - **Acondicionamiento:** Bode, retardo de grupo, polos y ceros, respuesta del anti-alias y comparacion A/B de la senal antes y despues del filtro.
 - **Aliasing:** tono o barrido llevado de 48 kHz a 6–16 kHz con y sin anti-alias; espectros y audio.
-- **Metricas:** validacion cruzada, prueba, matriz de confusion, ablation, robustez y grabaciones reales.
+- **Resultados:** validacion cruzada, prueba, matriz de confusion, ablation, robustez y grabaciones reales.
 
 ---
 

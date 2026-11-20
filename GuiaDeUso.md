@@ -8,10 +8,23 @@ Todos los comandos se corren desde la raiz del proyecto.
 
 ## 1. Instalar las dependencias
 
+Se necesita Python 3.12. Para bajar el proyecto: `git clone -b mejoras https://github.com/IagoMaSp/ProyectoSegmentacionDeAudio.git`, o desde GitHub con **Code → Download ZIP**.
+
+Mac / Linux:
+
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
+
+Windows (PowerShell):
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+```
+
+En Windows todos los comandos de esta guia son iguales cambiando `.venv/bin/python` por `.venv\Scripts\python`. Si `py` no existe, instalar Python desde python.org marcando la opcion "Add python.exe to PATH" y usar `python -m venv .venv`.
 
 `imageio-ffmpeg` trae un binario de `ffmpeg`, asi que no hace falta instalarlo aparte; si hay uno en el sistema se usa ese. Se necesita para leer formatos comprimidos (mp3, m4a, ogg, amr) y para la simulacion de codecs.
 
@@ -28,13 +41,22 @@ El repositorio incluye `models/modelo.joblib` y sus metricas, asi que la interfa
 .venv/bin/python -m src.server --port 9000
 ```
 
+Windows (PowerShell):
+
+```powershell
+.venv\Scripts\python -m src.server        # http://127.0.0.1:8000
+.venv\Scripts\python -m src.server --port 9000
+```
+
+Abrir la direccion en el navegador y cortar el servidor con `Ctrl+C`.
+
 Funciona sin conexion a internet. Pestanas:
 
 - **Archivo:** subir un audio o video (cualquier formato y frecuencia, hasta 200 MB). Se puede elegir salto de ventana, tipo de suavizado, penalidad de cambio y duracion minima. Clic en un segmento: lo reproduce y abre el panel con espectrograma, curvas, probabilidades, PCA con vecinos y rasgos que mas pesaron. Exporta JSON, CSV y SRT.
 - **En vivo:** clasificacion con el microfono. El navegador pide permiso; en `127.0.0.1` funciona sin HTTPS.
-- **Acondicionamiento:** Bode, polos y ceros, retardo de grupo y A/B de la ultima senal procesada antes y despues del filtro.
+- **Acondicionamiento:** Bode, polos y ceros y retardo de grupo del filtro (fijos, no dependen del audio). Abajo, con la ultima senal procesada: su espectro antes (A) y despues (B) del filtro, un resumen de cuanta energia se quito bajo 70 Hz y en 50 Hz, y la escucha A/B.
 - **Aliasing:** tono o barrido llevado de 48 kHz a 6–16 kHz con y sin anti-alias, con audio.
-- **Metricas:** validacion cruzada, prueba final, ablation, robustez y grabaciones reales.
+- **Resultados:** validacion cruzada, prueba final, ablation, robustez y grabaciones reales.
 
 ### 2.2. Linea de comandos
 
