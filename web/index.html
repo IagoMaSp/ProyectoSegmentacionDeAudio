@@ -18,7 +18,7 @@
       <button class="tab" role="tab" data-view="vivo" aria-selected="false">En vivo</button>
       <button class="tab" role="tab" data-view="filtros" aria-selected="false">Acondicionamiento</button>
       <button class="tab" role="tab" data-view="aliasing" aria-selected="false">Aliasing</button>
-      <button class="tab" role="tab" data-view="metricas" aria-selected="false">Métricas</button>
+      <button class="tab" role="tab" data-view="metricas" aria-selected="false">Resultados</button>
     </nav>
   </header>
 
@@ -230,9 +230,17 @@
         </div>
       </section>
       <section class="panel">
-        <div class="panel-head"><h2 class="section-heading">Antes y después del filtro</h2></div>
+        <div class="panel-head">
+          <h2 class="section-heading">Antes y después del filtro, con tu audio</h2>
+          <div class="legend-inline" id="spec-legend" hidden>
+            <span class="legend-chip"><span class="swatch" style="background:var(--ink-faint)"></span>A · original</span>
+            <span class="legend-chip"><span class="swatch" style="background:var(--ink)"></span>B · acondicionada</span>
+          </div>
+        </div>
         <div class="panel-body" style="display:flex;flex-direction:column;gap:.75rem">
-          <p class="note" id="ab-note">Procesá un archivo en la pestaña Archivo para comparar acá la señal decodificada y la acondicionada (las dos a 16 kHz). Con auriculares se nota la falta de graves en grabaciones con viento o zumbido de red.</p>
+          <p class="note" id="ab-note">Procesá un archivo en la pestaña Archivo para ver acá su espectro y escuchar la señal antes y después del filtro (las dos a 16 kHz).</p>
+          <div class="fig" id="spec-fig" hidden><canvas id="f-spec" height="240"></canvas><span class="fig-caption" id="spec-cap"></span></div>
+          <dl class="kv" id="spec-resumen" hidden></dl>
           <div class="ab-row">
             <button type="button" class="ghost-btn" id="ab-orig" aria-pressed="true" disabled>A · original</button>
             <button type="button" class="ghost-btn" id="ab-cond" aria-pressed="false" disabled>B · acondicionada</button>
@@ -277,7 +285,7 @@
     </section>
 
     <!-- METRICAS ======================================================= -->
-    <section class="view" id="view-metricas" hidden aria-label="Métricas"></section>
+    <section class="view" id="view-metricas" hidden aria-label="Resultados del entrenamiento"></section>
   </main>
 
 <script src="/app.js"></script>

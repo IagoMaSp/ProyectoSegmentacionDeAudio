@@ -702,6 +702,7 @@ function drawFilters() {
   plotLines($("f-phase"), { xlog: true, xmin: 5, xmax: 8000, series: [{ x: d.f, y: d.fase_grados, color: INK }] });
   plotLines($("f-gd"), { xlog: true, xmin: 20, xmax: 8000, ymin: 0, ymax: 40, series: [{ x: d.f, y: d.retardo_ms, color: INK }] });
   drawPZ();
+  drawSpectrum();
   plotLines($("f-aa"), {
     xmin: 0, xmax: 12000, ymin: -120, ymax: 5,
     series: [{ x: d.antialias.f, y: d.antialias.db, color: INK }],
@@ -744,10 +745,53 @@ $("pz-zoom").addEventListener("click", () => {
   if (filterData) drawPZ();
 });
 
+let specData = null;
 function enableAB(id) {
   $("ab-orig").disabled = false; $("ab-cond").disabled = false;
-  $("ab-note").textContent = "A y B son la misma señal a 16 kHz, antes y después del pasa-altos y el notch. El cambio conserva la posición de reproducción.";
+  $("ab-note").textContent =
+    "A es tu audio tal como entra al sistema (decodificado, en mono y remuestreado a 16 kHz). B es lo mismo después del pasa-altos " +
+    "y el notch, que es lo que ve el clasificador. El filtro solo toca lo que está por debajo de ~70 Hz: viento, golpes al micrófono, " +
+    "continua y zumbido de red a 50 Hz. Voz y música quedan intactas, así que en una grabación limpia A y B suenan casi iguales; " +
+    "la diferencia se escucha con auriculares en grabaciones con viento o zumbido. Al cambiar entre A y B se conserva la posición.";
   setAB("original", id);
+  loadSpectrum(id);
+}
+
+async function loadSpectrum(id) {
+  specData = null;
+  try {
+    specData = await getJSON(`/api/espectro?id=${id}`);
+  } catch (err) {
+    $("spec-fig").hidden = true; $("spec-resumen").hidden = true; $("spec-legend").hidden = true;
+    return;
+  }
+  const r = specData.resumen;
+  $("spec-resumen").innerHTML = [
+    ["Energía total quitada", `${fmt(r.energia_quitada_pct, 2)} %`],
+    [`Energía bajo ${r.hp_fc} Hz`, `${fmt(r.graves_antes_pct, 2)} % → ${fmt(r.graves_despues_pct, 2)} % del total`],
+    [`Pico en ${r.red_f0} Hz (red)`, `${fmt(r.red_antes_db, 1)} → ${fmt(r.red_despues_db, 1)} dB (${fmt(r.red_despues_db - r.red_antes_db, 1)} dB)`],
+  ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  $("spec-cap").textContent =
+    "Densidad espectral de potencia [dB] contra frecuencia [Hz] (Welch, ventanas de 0,5 s). Por encima de ~150 Hz las dos curvas " +
+    "se superponen: el filtro no cambia esa parte. La separación en graves sigue la respuesta del pasa-altos de arriba, y en 50 Hz " +
+    "aparece la muesca si había zumbido de red.";
+  $("spec-fig").hidden = false; $("spec-resumen").hidden = false; $("spec-legend").hidden = false;
+  drawSpectrum();
+}
+
+function drawSpectrum() {
+  const d = specData;
+  if (!d || $("view-filtros").hidden) return;
+  const all = d.original_db.concat(d.acondicionado_db).filter(Number.isFinite);
+  const top = Math.ceil(Math.max(...all) / 10) * 10 + 5;
+  plotLines($("f-spec"), {
+    xlog: true, xmin: 5, xmax: 8000, ymin: top - 100, ymax: top,
+    series: [
+      { x: d.f, y: d.original_db, color: FAINT, width: 1.4 },
+      { x: d.f, y: d.acondicionado_db, color: INK, width: 1.4 },
+    ],
+    vlines: [{ x: d.resumen.hp_fc, label: `${d.resumen.hp_fc} Hz` }, { x: d.resumen.red_f0, label: `${d.resumen.red_f0} Hz`, color: COLOR.ruido }],
+  });
 }
 function setAB(version, id = currentData && currentData.id) {
   const p = $("ab-player"), t = p.currentTime || 0, playing = !p.paused;
