@@ -54,7 +54,7 @@ Funciona sin conexion a internet. Pestanas:
 
 - **Archivo:** subir un audio o video (cualquier formato y frecuencia, hasta 200 MB). Se puede elegir salto de ventana, tipo de suavizado, penalidad de cambio y duracion minima. Clic en un segmento: lo reproduce y abre el panel con espectrograma, curvas, probabilidades, PCA con vecinos y rasgos que mas pesaron. Exporta JSON, CSV y SRT.
 - **En vivo:** clasificacion con el microfono. El navegador pide permiso; en `127.0.0.1` funciona sin HTTPS.
-- **Acondicionamiento:** Bode, polos y ceros y retardo de grupo del filtro (fijos, no dependen del audio). Abajo, con la ultima senal procesada: su espectro antes (A) y despues (B) del filtro, un resumen de cuanta energia se quito bajo 70 Hz y en 50 Hz, y la escucha A/B.
+- **Acondicionamiento:** Bode, polos y ceros y retardo de grupo del filtro (fijos, no dependen del audio). Abajo, con la ultima senal procesada: su espectro antes (A) y despues (B) del filtro, un resumen de cuanta energia se quito bajo 70 Hz y en 50 Hz, y la escucha A/B. El boton *A − B* reproduce solo lo que el filtro quito (graves y zumbido de red), amplificado para que se oiga; la ganancia aplicada figura en el resumen. En una grabacion limpia A y B suenan casi iguales y A − B es un retumbo grave que en parlantes chicos puede oirse casi como silencio. Despues de actualizar el codigo hay que reiniciar el servidor; si no, A − B devuelve el original.
 - **Aliasing:** tono o barrido llevado de 48 kHz a 6–16 kHz con y sin anti-alias, con audio.
 - **Resultados:** validacion cruzada, prueba final, ablation, robustez y grabaciones reales.
 

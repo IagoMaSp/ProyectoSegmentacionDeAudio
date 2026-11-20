@@ -747,12 +747,14 @@ $("pz-zoom").addEventListener("click", () => {
 
 let specData = null;
 function enableAB(id) {
-  $("ab-orig").disabled = false; $("ab-cond").disabled = false;
+  $("ab-orig").disabled = false; $("ab-cond").disabled = false; $("ab-dif").disabled = false;
   $("ab-note").textContent =
     "A es tu audio tal como entra al sistema (decodificado, en mono y remuestreado a 16 kHz). B es lo mismo después del pasa-altos " +
     "y el notch, que es lo que ve el clasificador. El filtro solo toca lo que está por debajo de ~70 Hz: viento, golpes al micrófono, " +
     "continua y zumbido de red a 50 Hz. Voz y música quedan intactas, así que en una grabación limpia A y B suenan casi iguales; " +
-    "la diferencia se escucha con auriculares en grabaciones con viento o zumbido. Al cambiar entre A y B se conserva la posición.";
+    "la diferencia se escucha con auriculares en grabaciones con viento o zumbido. A − B reproduce solo lo que el filtro quitó, " +
+    "amplificado para que se oiga (la ganancia aplicada figura en el resumen de abajo); si ahí casi no hay nada, es porque tu grabación " +
+    "no tenía graves ni zumbido que sacar. Al cambiar entre versiones se conserva la posición.";
   setAB("original", id);
   loadSpectrum(id);
 }
@@ -770,6 +772,7 @@ async function loadSpectrum(id) {
     ["Energía total quitada", `${fmt(r.energia_quitada_pct, 2)} %`],
     [`Energía bajo ${r.hp_fc} Hz`, `${fmt(r.graves_antes_pct, 2)} % → ${fmt(r.graves_despues_pct, 2)} % del total`],
     [`Pico en ${r.red_f0} Hz (red)`, `${fmt(r.red_antes_db, 1)} → ${fmt(r.red_despues_db, 1)} dB (${fmt(r.red_despues_db - r.red_antes_db, 1)} dB)`],
+    ["Ganancia aplicada a A − B", `+${fmt(r.diferencia_ganancia_db, 1)} dB`],
   ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
   $("spec-cap").textContent =
     "Densidad espectral de potencia [dB] contra frecuencia [Hz] (Welch, ventanas de 0,5 s). Por encima de ~150 Hz las dos curvas " +
@@ -799,9 +802,11 @@ function setAB(version, id = currentData && currentData.id) {
   p.addEventListener("loadedmetadata", () => { p.currentTime = t; if (playing) p.play().catch(() => {}); }, { once: true });
   $("ab-orig").setAttribute("aria-pressed", String(version === "original"));
   $("ab-cond").setAttribute("aria-pressed", String(version === "acondicionado"));
+  $("ab-dif").setAttribute("aria-pressed", String(version === "diferencia"));
 }
 $("ab-orig").addEventListener("click", () => setAB("original"));
 $("ab-cond").addEventListener("click", () => setAB("acondicionado"));
+$("ab-dif").addEventListener("click", () => setAB("diferencia"));
 
 /* ======================================================================
    Aliasing

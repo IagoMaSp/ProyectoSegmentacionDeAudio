@@ -7,7 +7,7 @@ Rutas
   GET  /api/estado             modelo cargado y parametros
   POST /api/segmentar          cuerpo = archivo; query: salto, suavizado, penalidad, minimo
   GET  /api/explicar           id, inicio, fin -> datos del panel "por que"
-  GET  /api/audio              id, version=original|acondicionado -> WAV 16 kHz
+  GET  /api/audio              id, version=original|acondicionado|diferencia -> WAV 16 kHz
   GET  /api/filtros            respuesta en frecuencia, polos/ceros, retardo de grupo
   GET  /api/aliasing           tono, fs, modo=tono|barrido -> espectros
   GET  /api/aliasing.wav       mismos parametros + variante=original|sin|con
@@ -214,8 +214,26 @@ def api_audio(query: dict) -> bytes:
     if a is None:
         raise KeyError("Analisis no encontrado.")
     version = _q(query, "version", "original", str)
-    x = a["y"] if version == "acondicionado" else a["x"]
+    if version == "acondicionado":
+        x = a["y"]
+    elif version == "diferencia":
+        d = a["x"] - a["y"]
+        x = d * _ganancia_diferencia(d)
+    else:
+        x = a["x"]
     return write_wav_bytes(x, C.SAMPLE_RATE)
+
+
+DIF_PICO = 0.5          # pico al que se lleva la diferencia (-6 dBFS)
+DIF_GANANCIA_MAX = 1000.0  # +60 dB como tope, para no amplificar ruido numerico
+
+
+def _ganancia_diferencia(d: np.ndarray) -> float:
+    """Ganancia lineal que lleva lo que quito el filtro (A - B) a un nivel audible."""
+    pico = float(np.max(np.abs(d))) if d.size else 0.0
+    if pico <= 0.0:
+        return 1.0
+    return float(min(DIF_PICO / pico, DIF_GANANCIA_MAX))
 
 
 def _psd_log(x: np.ndarray, fs: int, f_grid: np.ndarray) -> np.ndarray:
@@ -271,6 +289,7 @@ def api_espectro(query: dict) -> dict:
             "red_despues_db": round(float(10 * np.log10(py[hum].max() + eps)), 1),
             "red_f0": C.NOTCH_FREQS_HZ[0],
             "hp_fc": C.HP_CUTOFF_HZ,
+            "diferencia_ganancia_db": round(float(20 * np.log10(_ganancia_diferencia(x - y))), 1),
         },
     }
 
