@@ -8,7 +8,7 @@ Todos los comandos se corren desde la raiz del proyecto.
 
 ## 1. Instalar las dependencias
 
-Se necesita Python 3.12. Para bajar el proyecto: `git clone -b mejoras https://github.com/IagoMaSp/ProyectoSegmentacionDeAudio.git`, o desde GitHub con **Code → Download ZIP**.
+Se necesita Python 3.12. Para bajar el proyecto: `git clone https://github.com/IagoMaSp/ProyectoSegmentacionDeAudio.git`, o desde GitHub con **Code → Download ZIP**.
 
 Mac / Linux:
 
